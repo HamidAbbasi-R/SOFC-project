@@ -20,9 +20,15 @@ mod = py.importlib.import_module('individual_systems');
 py.importlib.reload(mod);
 
 %% Constant parameters
+% anode side area-specific exchange current density (initial guess)
 j0_a = 1e5;     %[A/m2]
+
+% cathode side area-specific exchange current density 
 j0_c = 1e3;     %[A/m2]
+
+% operating voltage
 V_op = 1;     %[V]
+tol = 1e-2;
 
 %% Load\initialize\run\postprocess the COMSOL model
 model = mphload('oneD_SOFC.mph');
@@ -31,10 +37,33 @@ model.param.set('j0_c', [num2str(j0_c) ' [A/m^2]']);
 model.param.set('V_op', [num2str(V_op) ' [V]']);
 
 model.study('std1').run;
+
+% get results from MACRO model
+% PHI_a is [hydrogen concentration, electron potential, ion potential, current density] at the anode/electrolyte interface
+% PHI_c is [oxygen concentration, electron potential, ion potential, current density] at the cathode/electrolyte interface
 PHI_a = model.result.numerical('pev2').getReal();
-PHI_c = model.result.numerical('pev1').getReal();
-disp(PHI_a)
+Ia_M = PHI_a(4);
 
 %% Run python model
-Ia_m = py.individual_systems.solve_individual_systems(PHI_a(1), PHI_a(2), PHI_a(3));
+while true
+    % update the inputs of the micromodel
+    update_micromodel_inputs(PHI_a);
 
+    % run the micromodel
+    Ia_m = py.individual_systems.solve_individual_systems();
+
+    % update the inputs of the MACRO model
+    model.param.set('j_a', [num2str(j0_a) ' [A/m^2]']);
+
+    % run the MACRO model
+    model.study('std1').run;
+
+    % get results from MACRO model
+    PHI_a = model.result.numerical('pev2').getReal();
+    Ia_M = PHI_a(4);
+
+    error = abs(Ia_M - Ia_m)/Ia_M;
+    if error < tol
+        break
+    end
+end
