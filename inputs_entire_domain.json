@@ -1,0 +1,63 @@
+{
+    "file_options": {
+        "new_case":         false,
+        "load_case":        false,
+        "load_case_data":   true,
+        "save_case":        false,
+        "save_data":        false,
+        "case_id": "case_multi",
+        "data_id": "data_multi",
+        "modifications": {
+            "max_iter_non": 1,
+            "show_1D_plots": false,
+            "show_3D_plots": true
+        }
+    },
+    "Nx_a": 100,
+    "Nx_e": 100,
+    "Nx_c": 100,
+    "Ny": 70,
+    "Nz": 70,
+    "display_mesh": true,
+    "is_multiple_instances": false,
+    "M_instances": 3, 
+    "scaling_factor": 1.3,
+    "dx": 25e-09,
+    "sig_gen_a": 2,
+    "sig_gen_c": 2,
+    "seed": [
+        2,
+        1
+    ],
+    "vf_pores_a": 0.3,
+    "vf_Ni_a": 0.2,
+    "vf_YSZ_a": 0.5,
+    "vf_pores_c": 0.33,
+    "vf_LSM_c": 0.33,
+    "vf_YSZ_c": 0.34,
+    "K_pores_a": 4.11e-05,
+    "K_Ni": 2.17e6,
+    "K_YSZ": 8.4,
+    "K_pores_c": 4.11e-05,
+    "K_LSM": 1.5e6,
+    "T": 1173.15,
+    "P": 1,
+    "pH2_in": 0.3,
+    "pO2_in": 0.21,
+    "Vel_anode": 0.9,
+    "Vel_cathode": 0.4,
+    "Vio_init": 0.6,
+    "max_iter_non": 30,
+    "max_iter_lin": 10,
+    "tol": 1e-20,
+    "uf": [
+        0.9,
+        0.9,
+        0.8,
+        0.9,
+        0.9
+    ],
+    "show_residuals": false,
+    "show_3D_plots": false,
+    "show_1D_plots": true
+}
