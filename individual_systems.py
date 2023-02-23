@@ -10,7 +10,6 @@ def solve_individual_systems():
     f = open('inputs.json')
     inputs = json.load(f)
     file_options = inputs['file_options']
-    "Here is an added line"
 
     # scale the ion potential if it is not zero to avoid numerical difficulties
     scale_ion = inputs['boundary_conditions']['Vio_b'] 
