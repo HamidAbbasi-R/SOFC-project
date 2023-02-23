@@ -2,7 +2,7 @@ def save_data(data_name, phi, residuals):
     # save the data
     import os
     from dill import dump
-
+    
     print('Saving data...', end='')
     if not os.path.exists('data'):
         os.makedirs('data')
