@@ -1,4 +1,17 @@
 def solve_individual_systems():
+    """
+    This function does the following:
+    1. Reads the input file
+    2. Creates the microstructure
+    3. Creates the topological operations
+    4. Creates the field functions
+    5. Creates the indices
+    6. Creates the system of linear equations
+    7. Creates the initial guess for the solution
+    8. Solves the system of linear equations
+    9. Creates the dense matrices
+    10. Visualizes the results
+    """
     import json
     # from modules.file_options import file_options as fo
     from modules import topology as tpl
