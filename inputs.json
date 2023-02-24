@@ -4,7 +4,7 @@
         "new_case":         false,
         "load_case":        true,
         "load_case_data":   false,
-        "save_case":        true,
+        "save_case":        false,
         "save_data":        false,
         "case_id": "case",
         "data_id": "data"
@@ -49,7 +49,7 @@
     "solver_options": 
     {
         "ion_only": true,
-        "max_iter_non": 20,
+        "max_iter_non": 40,
         "max_iter_lin": 10,
         "tol": 1e-3,
         "uf": {
@@ -64,7 +64,7 @@
     {        
         "show_residuals": true,
         "show_3D_plots": false,
-        "show_1D_plots": false
+        "show_1D_plots": true
     },
 
 

@@ -3,14 +3,14 @@ def solve_individual_systems():
     This function does the following:
     1. Reads the input file
     2. Creates the microstructure
-    3. Creates the topological operations
-    4. Creates the field functions
-    5. Creates the indices
+    3. Perform the topological operations
+    4. Creates the field functions and assign the boundary conditions
+    5. Creates the indices for the cells in each of three phases
     6. Creates the system of linear equations
-    7. Creates the initial guess for the solution
     8. Solves the system of linear equations
     9. Creates the dense matrices
     10. Visualizes the results
+    11. returns the current density
     """
     import json
     # from modules.file_options import file_options as fo
