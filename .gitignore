@@ -1,5 +1,1 @@
-_pycache_/
-modules/_pycache_/
-legacy versions/_pycache_/
-.vscode/
-*.pyc
+**/__pycache__/
