@@ -1,43 +1,43 @@
-#%% 
-import microstructure as ms
+
+from modules import topology as tpl
 import numpy as np
 
 N = [    # Number of voxels in each direction
-    150,
-    150,
-    150]
+    400,
+    100,
+    100,
+    ]
 
-sigma_seg = 4   # Segregation parameter
-sigma_gen = 6   # Generation parameter
-dx = 25e-9      # Voxel size [m]
+sigma_gen = 3   # Generation parameter
+sigma_seg = 3   # Segregation parameter
+dx = 50e-9      # Voxel size [m]
 
-phase_mat = ms.create_phase_data(
+phase_mat = tpl.create_phase_data(
     voxels = N,
     vol_frac = [0.28, 0.28, 0.44],
     sigma = sigma_gen,
     seed = [50,10],
     display = False)
 
-#%% Topological analysis
 import numpy as np
 # percolation analysis
 phase_mat_nans, labeled_pores, percolating_labels\
-    = ms.percolation_analysis(phase_mat)
+    = tpl.percolation_analysis(phase_mat)
     
 # specific surface analysis
 # isa_12_mat, isa_23_mat, isa_31_mat,\
 #     isa_12, isa_23, isa_31 = ms.ISA(phase_mat)
 
 # triple phase boundary analysis
-TPBs, TPB_density, vertices, lines = ms.measure_TPB(phase_mat_nans)
-TPB_density = TPB_density / dx**2 / 1e12      # [μm^-2]
+TPBs, TPB_density, vertices, lines = tpl.measure_TPB(phase_mat_nans, dx)
+TPB_density = TPB_density / 1e12      # [μm^-2]
 # TPBs_all, TPB_all_density, vertices_all, lines_all = m3d.measure_TPB(phase_mat)
 # m3d.save_image(phase_mat)
 # np.save('data.npy',TPBs_all)
 
 # image segmentation 
 labels, dist_mat, phase_mat_nans, percolating_labels, volumes, centroids\
-    = ms.image_segmentation(phase_mat,sigma_seg)
+    = tpl.image_segmentation(phase_mat,sigma_seg)
 volumes[0] = volumes[0] * dx**3 * 1e18      # [μm^3]
 volumes[1] = volumes[1] * dx**3 * 1e18      # [μm^3]
 volumes[2] = volumes[2] * dx**3 * 1e18      # [μm^3]
