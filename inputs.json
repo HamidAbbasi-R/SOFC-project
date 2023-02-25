@@ -1,8 +1,8 @@
 {
     "file_options": 
     {
-        "new_case":         false,
-        "load_case":        true,
+        "new_case":         true,
+        "load_case":        false,
         "load_case_data":   false,
         "save_case":        false,
         "save_data":        false,
@@ -13,9 +13,9 @@
 
     "microstructure": 
     {
-        "Nx": 150,
-        "Ny": 70,
-        "Nz": 70,
+        "Nx": 40,
+        "Ny": 40,
+        "Nz": 40,
         "sig_gen": 3,
         "seed": [20,12],
         "volume_fractions": {
@@ -23,7 +23,7 @@
             "Ni": 0.3,
             "YSZ": 0.4
         },
-        "dx": 25e-09
+        "dx": 50e-09
     },
 
     "boundary_conditions": 

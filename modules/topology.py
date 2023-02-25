@@ -664,7 +664,7 @@ def create_microstructure(inputs):
         vol_frac = vol_frac,
         sigma = inputs['microstructure']['sig_gen'],
         seed = inputs['microstructure']['seed'],
-        display = True,
+        display = False,
         )
     return domain
 
