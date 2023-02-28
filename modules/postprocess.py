@@ -18,6 +18,7 @@ def visualize_residuals(inputs, residuals):
 
     df = pd.concat(df)
     fig = px.line(df, x='iteration', y='residual', color='Variable', log_y=True)
+    fig.update_yaxes(exponentformat="e")
     fig.show()
 
 def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots):

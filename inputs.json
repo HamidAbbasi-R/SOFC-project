@@ -1,8 +1,8 @@
 {
     "file_options": 
     {
-        "new_case":         true,
-        "load_case":        false,
+        "new_case":         false,
+        "load_case":        true,
         "load_case_data":   false,
         "save_case":        true,
         "save_data":        true,
@@ -30,7 +30,7 @@
     {
         "pH2_inlet": 0.7,
         "pH2_b": 0.6,
-        "Vel_b": 0.6,
+        "Vel_b": 0.5,
         "Vio_b": 0.0
     },
     

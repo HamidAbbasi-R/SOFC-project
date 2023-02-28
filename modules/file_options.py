@@ -1,6 +1,5 @@
 def save_data(data_name, phi, residuals):
     # save the data
-    import os
     from dill import dump
     
     print('Saving data file...', end='')
@@ -73,7 +72,7 @@ def get_directory():
     
     username = os.getlogin()
     if username=='x67637ha' or username=='ASUS': # my own laptop or the university laptop
-        directory = 'C:/Users/' + username + '/OneDrive - The University of Manchester/SOFC/Python case and data/'
+        directory = 'C:/Users/' + username + '/OneDrive - The University of Manchester/SOFC/Micromodel/Python case and data/'
     elif username=='Hamid': # server computer
         directory = 'D:/Share/Hamid Abbasi/Micromodel/Python case and data/'
     else:

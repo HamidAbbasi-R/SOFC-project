@@ -83,7 +83,7 @@ def solve_individual_systems():
                 'Vio_1D':       True,
                 'Ia_1D':        True,
                 'eta_act_1D':   True,
-                'eta_con_1D':   True,
+                'eta_con_1D':   False,
                 'cH2_3D':       False,
                 'Vel_3D':       False,
                 'Vio_3D':       False,
