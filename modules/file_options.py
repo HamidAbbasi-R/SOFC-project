@@ -3,7 +3,7 @@ def save_data(data_name, phi, residuals):
     import os
     from dill import dump
     
-    print('Saving data...', end='')
+    print('Saving data file...', end='')
     if not os.path.exists('data'):
         os.makedirs('data')
 
@@ -20,6 +20,7 @@ def load_case_individual(case_name):
     from scipy.sparse import load_npz
     import warnings
     
+    print('Loading case file...', end='')
     with warnings.catch_warnings(): 
         warnings.simplefilter("ignore")
         with open(get_directory() + case_name + '.pkl', 'rb') as file:
@@ -71,8 +72,6 @@ def load_case_data_individual(case_name, data_name):
 
 def get_directory():
     from os import getlogin
-    
-    print('Loading case file...', end='')
     
     username = getlogin()
     if username=='x67637ha' or username=='ASUS': # my own laptop or the university laptop

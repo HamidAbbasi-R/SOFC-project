@@ -41,9 +41,9 @@ def sourcefunc_calc(inputs, TPB_dict):
     vars = [cH2, Vel, Vio]
 
     xH2 = cH2/rhoH2             # mole fraction of hydrogen, symbolic []
-    xH2O = pH2O/ptot       # mole fraction of water, symbolic []
     pH2 = ptot*xH2         # partial pressure of hydrogen, symbolic [atm]
     pH2O = ptot - pH2           # partial pressure of water, symbolic [atm]
+    xH2O = pH2O/ptot       # mole fraction of water, symbolic []
     
     # ??? Exchange current per TPB length, anode [A/m], Prokop et al. 2018 
     # This equation is not correct right now. I'm not sure what variables should be used instead

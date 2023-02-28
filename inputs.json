@@ -4,8 +4,8 @@
         "new_case":         true,
         "load_case":        false,
         "load_case_data":   false,
-        "save_case":        false,
-        "save_data":        false,
+        "save_case":        true,
+        "save_data":        true,
         "case_id": "case",
         "data_id": "data"
     },
