@@ -651,21 +651,32 @@ def remove_edges(phi):
     
 def create_microstructure(inputs):
     # create the entire domain
-    Nx = inputs['microstructure']['Nx']
-    Ny = inputs['microstructure']['Ny']
-    Nz = inputs['microstructure']['Nz']
+    if inputs['microstructure']['reduced_geometry']:
+        if inputs['microstructure']['Nx_extended'] < inputs['microstructure']['Nx']:
+            raise ValueError('Nx_extended must be larger than Nx')
+        voxels = [inputs['microstructure']['Nx_extended'], 
+                  inputs['microstructure']['Ny'],
+                  inputs['microstructure']['Nz']]
+    else:
+        voxels = [inputs['microstructure']['Nx'], 
+                  inputs['microstructure']['Ny'],
+                  inputs['microstructure']['Nz']]
 
     vol_frac = [inputs['microstructure']['volume_fractions']['pores'],
                 inputs['microstructure']['volume_fractions']['Ni'],
                 inputs['microstructure']['volume_fractions']['YSZ']]
 
     domain = create_phase_data(
-        voxels = [Nx,Ny,Nz],
+        voxels = voxels,
         vol_frac = vol_frac,
         sigma = inputs['microstructure']['sig_gen'],
         seed = inputs['microstructure']['seed'],
         display = False,
         )
+    
+    if inputs['microstructure']['reduced_geometry']:
+        domain = domain[:inputs['microstructure']['Nx'],:,:]
+
     return domain
 
 def topological_operations(inputs, domain):

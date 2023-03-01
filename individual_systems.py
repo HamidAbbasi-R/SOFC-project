@@ -12,6 +12,8 @@ def solve_individual_systems():
     10. Visualizes the results
     11. returns the current density
     """
+    import time
+    start = time.time()
     import json
     # from modules.file_options import file_options as fo
     from modules import topology as tpl
@@ -91,5 +93,8 @@ def solve_individual_systems():
                 'eta_act_3D':   False,
                 'eta_con_3D':   False,
             })
+        
+    end = time.time()
+    print('Time elapsed: ', end - start)
     return dense_m['Ia']
             

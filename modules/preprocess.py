@@ -210,11 +210,11 @@ def get_indices(inputs, domain, TPB_mask_old, ds, phase):
     L = len(ip1)  # total number of points in diagonal of A (matrix of coefficients)
     
     # identifying elements who has a neighbor in the solver domain
-    ip1_E, jp1_E, kp1_E = np.where(np.logical_and(ds[:-1,:,:],ds[1:,:,:])) 
+    ip1_E, jp1_E, kp1_E = np.where(np.logical_and(ds[:-1,:,:],ds[1:,:,:]))  # has east neighbor
     ip1_W, jp1_W, kp1_W = ip1_E+1, jp1_E, kp1_E
-    ip1_N, jp1_N, kp1_N = np.where(np.logical_and(ds[:,:-1,:],ds[:,1:,:]))
+    ip1_N, jp1_N, kp1_N = np.where(np.logical_and(ds[:,:-1,:],ds[:,1:,:]))  # has north neighbor
     ip1_S, jp1_S, kp1_S = ip1_N, jp1_N+1, kp1_N
-    ip1_T, jp1_T, kp1_T = np.where(np.logical_and(ds[:,:,:-1],ds[:,:,1:]))
+    ip1_T, jp1_T, kp1_T = np.where(np.logical_and(ds[:,:,:-1],ds[:,:,1:]))  # has top neighbor
     ip1_B, jp1_B, kp1_B = ip1_T, jp1_T, kp1_T+1
 
     ind_east_stack = np.stack((ip1_E, jp1_E, kp1_E), axis=1)    # has east neighbor
@@ -555,6 +555,7 @@ def interior_individual(J, indices, K, ds, dx, bc, isMi, M_ins=None, scaling_fac
 def initilize_field_variables_individual(inputs, masks_dict, indices, isMi, M_instances = None, scaling_factor = None):
     # initial guess
     import numpy as np
+    print('Initializing field variables...', end = ' ')
     residuals = [[]]*3
     phi = [[]]*3
     N_y = inputs['microstructure']['Ny']
@@ -585,6 +586,7 @@ def initilize_field_variables_individual(inputs, masks_dict, indices, isMi, M_in
                 sf = scaling_factor**(np.sum(j>=j_seg)-1)
                 phi[p][n] = init_cond[p]*sf
 
+    print('Done!')
     return phi, residuals
 
 # specific functions for the entire cell
