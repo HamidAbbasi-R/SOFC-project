@@ -171,7 +171,7 @@ def sourcefunc_calc(inputs, TPB_dict):
     return field_functions, thd, bc_dict
 
 def get_indices_all(inputs, domain, TPB_dict):
-    print('Identifying neighbors and getting indices...', end=' ')
+    print('Identifying neighboring cells and obtaining indices...', end=' ')
     import numpy as np
     TPB_mask = TPB_dict['TPB_mask']
     ds = [None]*3
