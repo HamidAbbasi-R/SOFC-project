@@ -1,2 +1,3 @@
 from individual_systems import solve_individual_systems as sis
-sis()
+if __name__ == '__main__':
+    sis()

@@ -197,7 +197,8 @@ def get_indices_all(inputs, domain, TPB_dict):
 
 def get_indices(inputs, domain, TPB_mask_old, ds, phase):
     import numpy as np
-    from concurrent.futures import ProcessPoolExecutor
+    import concurrent.futures 
+    # import multiprocessing as mp
     from time import time
 
     N = domain.shape
@@ -226,65 +227,59 @@ def get_indices(inputs, domain, TPB_mask_old, ds, phase):
     ind_top_stack = np.stack((ip1_T, jp1_T, kp1_T), axis=1)     # has top neighbor
     ind_bottom_stack = np.stack((ip1_B, jp1_B, kp1_B), axis=1)  # has bottom neighbor
     
-    t = time()
+    flag_west, flag_east, flag_south, flag_north, flag_bottom, flag_top = np.zeros(shape=(6, L), dtype=int)-1
     
     if not(inputs['solver_options']['ion_only'] and phase!=2): 
-        if __name__ == 'modules.preprocess':
-            with ProcessPoolExecutor() as executor:
-                res1 = executor.submit(get_flags, ind_west_stack, ind_east_stack, ind_stack, L)
-                res2 = executor.submit(get_flags, ind_south_stack, ind_north_stack, ind_stack, L)
-                res3 = executor.submit(get_flags, ind_bottom_stack, ind_top_stack, ind_stack, L)
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            WE_res = executor.submit(get_flags, ind_west_stack, ind_east_stack, ind_stack, L)
+            SN_res = executor.submit(get_flags, ind_south_stack, ind_north_stack, ind_stack, L)
+            BT_res = executor.submit(get_flags, ind_bottom_stack, ind_top_stack, ind_stack, L)
 
-                flag_west, flag_east = res1.result()
-                flag_south, flag_north = res2.result()
-                flag_bottom, flag_top = res3.result()
-
-    print('Time for get_flags (parallel): ', time()-t)
+            flag_west, flag_east = WE_res.result()
+            flag_south, flag_north = SN_res.result()
+            flag_bottom, flag_top = BT_res.result()
     
-    print('dummy line')
-    t = time()
-    flag_west, flag_east, flag_south, flag_north, flag_bottom, flag_top = np.zeros(shape=(6, L), dtype=int)-1
-    # identifying the west-east pairs of elements 
-    a = 0
-    b = []
-    for n in range(len(ind_west_stack)):
-        if inputs['solver_options']['ion_only'] and phase!=2: break
-        while np.any(ind_east_stack[n,:] != ind_stack[a,:]):
-            a += 1
-        b = b+1 if b!=[] else a+1
-        while np.any(ind_west_stack[n,:] != ind_stack[b,:]):
-            b += 1
-        flag_west[b] = a
-        flag_east[a] = b
+    # # identifying the west-east pairs of elements 
+    # a = 0
+    # b = []
+    # for n in range(len(ind_west_stack)):
+    #     if inputs['solver_options']['ion_only'] and phase!=2: break
+    #     while np.any(ind_east_stack[n,:] != ind_stack[a,:]):
+    #         a += 1
+    #     b = b+1 if b!=[] else a+1
+    #     while np.any(ind_west_stack[n,:] != ind_stack[b,:]):
+    #         b += 1
+    #     flag_west[b] = a
+    #     flag_east[a] = b
 
-    # identifying the south-north pairs of elements
-    a = 0
-    b = []
-    for n in range(len(ind_south_stack)):
-        if inputs['solver_options']['ion_only'] and phase!=2: break
-        while np.any(ind_north_stack[n,:] != ind_stack[a,:]):
-            a += 1
-        b = b+1 if b!=[] else a+1
-        while np.any(ind_south_stack[n,:] != ind_stack[b,:]):
-            b += 1
-        flag_south[b] = a
-        flag_north[a] = b
+    # # identifying the south-north pairs of elements
+    # a = 0
+    # b = []
+    # for n in range(len(ind_south_stack)):
+    #     if inputs['solver_options']['ion_only'] and phase!=2: break
+    #     while np.any(ind_north_stack[n,:] != ind_stack[a,:]):
+    #         a += 1
+    #     b = b+1 if b!=[] else a+1
+    #     while np.any(ind_south_stack[n,:] != ind_stack[b,:]):
+    #         b += 1
+    #     flag_south[b] = a
+    #     flag_north[a] = b
 
-    # identifying the bottom-top pairs of elements
-    a = 0
-    b = []
-    for n in range(len(ind_bottom_stack)):
-        if inputs['solver_options']['ion_only'] and phase!=2: break
-        while np.any(ind_top_stack[n,:] != ind_stack[a,:]):
-            a += 1
-        b = b+1 if b!=[] else a+1
-        while np.any(ind_bottom_stack[n,:] != ind_stack[b,:]):
-            b += 1
-        flag_bottom[b] = a
-        flag_top[a] = b
+    # # identifying the bottom-top pairs of elements
+    # a = 0
+    # b = []
+    # for n in range(len(ind_bottom_stack)):
+    #     if inputs['solver_options']['ion_only'] and phase!=2: break
+    #     while np.any(ind_top_stack[n,:] != ind_stack[a,:]):
+    #         a += 1
+    #     b = b+1 if b!=[] else a+1
+    #     while np.any(ind_bottom_stack[n,:] != ind_stack[b,:]):
+    #         b += 1
+    #     flag_bottom[b] = a
+    #     flag_top[a] = b
     
-    print('Time for get_flags (serial): ', time()-t)
-    print('dummy line')
+    # if phase==2: print('Time for get_flags (serial): ', time()-t)
+    # print('dummy line')
     # another method to find the indices of the neighbors [yields the same result but enifficient when N is large]
     # flag_west2, flag_east2, flag_south2, flag_north2, flag_bottom2, flag_top2 = np.zeros(shape=(6, L), dtype=int)-1
     # t = time.time()
