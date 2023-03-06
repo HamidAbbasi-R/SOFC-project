@@ -141,6 +141,11 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_file=
         Ia_c_down = np.zeros(N[0])
         Ia_c_up = np.zeros(N[0])
         Ia_A_lin = np.zeros(N[0])
+        Ia_A_max = np.zeros(N[0])
+        Ia_A_min = np.zeros(N[0])
+        Ia_A_c_down = np.zeros(N[0])
+        Ia_A_c_up = np.zeros(N[0])
+
         vol = np.zeros(N[0])
         area = N[1]*N[2]*dx**2 # [m2]
         for i in range(N[0]):
@@ -150,6 +155,9 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_file=
                 Ia_min[i] = np.nan
                 Ia_c_down[i], Ia_c_up[i] = np.nan, np.nan
                 Ia_A_lin[i] = np.nan
+                Ia_A_max[i] = np.nan
+                Ia_A_min[i] = np.nan
+                Ia_A_c_down[i], Ia_A_c_up[i] = np.nan, np.nan
                 vol[i] = np.nan
             else:
                 a = dense_Ia[i, :, :][~np.isnan(dense_Ia[i, :, :])]
@@ -157,9 +165,15 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_file=
                 Ia_max[i]  = np.max(a)
                 Ia_min[i]  = np.min(a)
                 Ia_c_down[i], Ia_c_up[i] = mean_confidence_interval(a)
+                
                 vol[i] = len(a)*dx**3 # [m3]
                 Ia_A_lin[i] = np.average(a)*vol[i]/area # [A/m2] 
-        plot_with_continuous_error(x, Ia_A_lin, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title='Area-specific current density', save_file=save_file)
+                Ia_A_min[i] = np.min(a)*vol[i]/area # [A/m2]
+                Ia_A_max[i] = np.max(a)*vol[i]/area # [A/m2]
+                Ia_A_c_down[i] = Ia_c_down[i]*vol[i]/area # [A/m2]
+                Ia_A_c_up[i] = Ia_c_up[i]*vol[i]/area # [A/m2]
+
+        plot_with_continuous_error(x, Ia_A_lin, Ia_A_min, Ia_A_max, Ia_A_c_down, Ia_A_c_up, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title='Area-specific current density', save_file=save_file)
         plot_with_continuous_error(x, Ia_lin, Ia_min, Ia_max, Ia_c_down, Ia_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title='Volumetric current density', save_file=save_file)
     
 
@@ -200,7 +214,7 @@ def create_TPB_field_variable_individual(inputs, phi_dense, indices, masks_dict,
 
 def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_up=None, x_title='x', y_title='y', title=None, save_file=False):
     import plotly.graph_objects as go
-    from file_options import get_directory
+    from modules.file_options import get_directory
 
     x = [x] if type(x) is not list else x 
     y = [y] if type(y) is not list else y
@@ -208,7 +222,7 @@ def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_
     y_max = [y_max] if type(y_max) is not list else y_max
     y_c_down = [y_c_down] if type(y_c_down) is not list else y_c_down
     y_c_up = [y_c_up] if type(y_c_up) is not list else y_c_up
-    dir = get_directory(save_file)
+    dir = get_directory()
 
     fig = go.Figure()
     for i in range(len(y)):

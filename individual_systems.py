@@ -93,7 +93,7 @@ def solve_individual_systems():
                 'eta_act_3D':   False,
                 'eta_con_3D':   False,
             },
-            save_file=False)
+            save_file=True)
         
     end = time.time()
     print('Time elapsed: ', end - start)
