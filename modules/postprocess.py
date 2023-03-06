@@ -21,7 +21,7 @@ def visualize_residuals(inputs, residuals):
     fig.update_yaxes(exponentformat="e")
     fig.show()
 
-def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots):
+def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_file=False):
     # visualize the solution
     import numpy as np
     import pyvista as pv
@@ -104,7 +104,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots):
             cH2_max[i] = np.max(a)
             cH2_min[i] = np.min(a)
             cH2_c_down[i], cH2_c_up[i] = mean_confidence_interval(a)
-        plot_with_continuous_error(x, cH2_lin, cH2_c_down, cH2_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title='Hydrogen concentration')
+        plot_with_continuous_error(x, cH2_lin, cH2_c_down, cH2_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title='Hydrogen concentration', save_file=save_file)
     
     if plots['Vel_1D']:
         Vel_lin = np.zeros(N[0])
@@ -118,7 +118,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots):
             Vel_max[i] = np.max(a)
             Vel_min[i] = np.min(a)
             Vel_c_down[i], Vel_c_up[i] = mean_confidence_interval(a)
-        plot_with_continuous_error(x, Vel_lin, Vel_c_down, Vel_c_up, x_title='Distance from anode (µm)', y_title='Electron potential (V)', title='Electron potential')
+        plot_with_continuous_error(x, Vel_lin, Vel_c_down, Vel_c_up, x_title='Distance from anode (µm)', y_title='Electron potential (V)', title='Electron potential', save_file=save_file)
 
     if plots['Vio_1D']:
         Vio_lin = np.zeros(N[0])
@@ -132,7 +132,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots):
             Vio_max[i] = np.max(a)
             Vio_min[i] = np.min(a)
             Vio_c_down[i], Vio_c_up[i] = mean_confidence_interval(a)
-        plot_with_continuous_error(x, Vio_lin, Vio_min, Vio_max, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Ion potential (V)', title='Ion potential')
+        plot_with_continuous_error(x, Vio_lin, Vio_min, Vio_max, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Ion potential (V)', title='Ion potential', save_file=save_file)
 
     if plots['Ia_1D']:
         Ia_lin = np.zeros(N[0])
@@ -159,9 +159,8 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots):
                 Ia_c_down[i], Ia_c_up[i] = mean_confidence_interval(a)
                 vol[i] = len(a)*dx**3 # [m3]
                 Ia_A_lin[i] = np.average(a)*vol[i]/area # [A/m2] 
-        plot_with_continuous_error(x, vol)
-        plot_with_continuous_error(x, Ia_A_lin, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title='Area-specific current density')
-        plot_with_continuous_error(x, Ia_lin, Ia_min, Ia_max, Ia_c_down, Ia_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title='Volumetric current density')
+        plot_with_continuous_error(x, Ia_A_lin, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title='Area-specific current density', save_file=save_file)
+        plot_with_continuous_error(x, Ia_lin, Ia_min, Ia_max, Ia_c_down, Ia_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title='Volumetric current density', save_file=save_file)
     
 
     if inputs['output_options']['show_3D_plots']:
@@ -199,37 +198,18 @@ def create_TPB_field_variable_individual(inputs, phi_dense, indices, masks_dict,
     TPB_mat[TPB_mat==0] = np.nan
     return TPB_mat
 
-def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_up=None, x_title='x', y_title='y', title=None):
+def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_up=None, x_title='x', y_title='y', title=None, save_file=False):
     import plotly.graph_objects as go
+    from file_options import get_directory
+
     x = [x] if type(x) is not list else x 
     y = [y] if type(y) is not list else y
     y_min = [y_min] if type(y_min) is not list else y_min
     y_max = [y_max] if type(y_max) is not list else y_max
     y_c_down = [y_c_down] if type(y_c_down) is not list else y_c_down
     y_c_up = [y_c_up] if type(y_c_up) is not list else y_c_up
+    dir = get_directory(save_file)
 
-    # fig = go.Figure([
-    #     go.Scatter(
-    #         name='Upper Bound',
-    #         x=x,
-    #         y=y_max,
-    #         mode='lines',
-    #         marker=dict(color="#444"),
-    #         line=dict(width=0),
-    #         showlegend=False,
-    #     ),
-    #     go.Scatter(
-    #         name='Lower Bound',
-    #         x=x,
-    #         y=y_min,
-    #         marker=dict(color="#444"),
-    #         line=dict(width=0),
-    #         mode='lines',
-    #         fillcolor='rgba(68, 68, 68, 0.3)',
-    #         fill='tonexty',
-    #         showlegend=False,
-    #     )
-    # ])
     fig = go.Figure()
     for i in range(len(y)):
         fig.add_trace(
@@ -302,8 +282,9 @@ def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_
     fig.update_xaxes(exponentformat="SI") 
     fig.update_yaxes(exponentformat="e")
     fig.show()
-    str = f'svg\\{title if title is not None else "fig"}.svg'
-    fig.write_image(str)
+    if save_file:
+        file_dir = dir + f'svg/{title if title is not None else "fig"}.svg'
+        fig.write_image(file_dir)
 
 def mean_confidence_interval(data, confidence=0.95):
     import numpy as np

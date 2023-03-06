@@ -1,21 +1,19 @@
 {
     "file_options": 
     {
-        "new_case":         true,
+        "new_case":         false,
         "load_case":        false,
-        "load_case_data":   false,
-        "save_case":        true,
+        "load_case_data":   true,
+        "save_case":        false,
         "save_data":        true,
-        "case_id": "case_400_100",
-        "data_id": "data_400_100"
+        "case_id": "case_800_100",
+        "data_id": "data_800_100"
     },
 
 
     "microstructure": 
     {
-        "reduced_geometry": true,
-        "Nx_extended": 800,
-        "Nx": 400,
+        "Nx": 800,
         "Ny": 100,
         "Nz": 100,
         "sig_gen": 3,
@@ -51,8 +49,8 @@
     "solver_options": 
     {
         "ion_only": true,
-        "max_iter_non": 200,
-        "max_iter_lin": 10,
+        "max_iter_non": 2,
+        "max_iter_lin": 50,
         "tol": 1e-4,
         "uf": {
             "cH2": 0.9,
