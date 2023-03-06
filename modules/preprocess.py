@@ -53,10 +53,12 @@ def sourcefunc_calc(inputs, TPB_dict):
     # clear what variables are used in the equation. 
     # I am confused if these two variables should be:
     # 1- mole fractions, or
-    # 2- normalized mole fractions.
+    # 2- normalized mole fractions, or
+    # 3- partial pressures.
     # If normalized mole fractions should be used, actual mole fractions (xH2, and xH2O) should 
     # be devided by the standard mole fraction. 
-    I0a_l = 31.4 * (xH2)**(-0.03) * (xH2O)**(0.4) * np.exp(-152155/R/T)  
+    # The unit for this equation is not clear. It is not clear if it is [A/m] or [A/cm] or anything similar.
+    I0a_l = 31.4 * (pH2*101325)**(-0.03) * (pH2O*101325)**(0.4) * np.exp(-152155/R/T)  
 
     # The way that lineal exchange current density is transformed to volumetric exchange
     # current density is not clear. Two possible conversion factors can be used. 
