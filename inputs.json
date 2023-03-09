@@ -4,8 +4,8 @@
         "new_case":         true,
         "load_case":        false,
         "load_case_data":   false,
-        "save_case":        true,
-        "save_data":        true,
+        "save_case":        false,
+        "save_data":        false,
         "case_id": "case_test",
         "data_id": "data_test"
     },
@@ -15,14 +15,14 @@
     {
         "reduced_geometry": false,
         "Nx_extended": 800,
-        "Nx": 50,
-        "Ny": 50,
-        "Nz": 50,
+        "Nx": 100,
+        "Ny": 100,
+        "Nz": 100,
         "sig_gen": 3,
         "seed": [20,12],
         "volume_fractions": {
             "pores": 0.3,
-            "Ni": 0.3,
+            "Ni": 0.253,
             "YSZ": 0.4
         },
         "dx": 50e-09
@@ -30,20 +30,15 @@
 
     "boundary_conditions": 
     {
-        "pH2_inlet": 0.5,
-        "pH2_b": 0.4,
-        "Vel_b": 0.1,
+        "pH2_inlet": 0.96,
+        "pH2_b": 0.97,
+        "Vel_b": 0.05,
         "Vio_b": 0.0
     },
     
     "operating_conditions": 
     {
-        "conductivity": {
-            "cH2": 4.11e-05,
-            "Vel": 2.17e6,
-            "Vio": 8.4
-        },
-        "T": 1073.15,
+        "T": 1273.15,
         "P": 1
     },
     
@@ -51,7 +46,7 @@
     "solver_options": 
     {
         "ion_only": true,
-        "max_iter_non": 5,
+        "max_iter_non": 50,
         "max_iter_lin": 20,
         "tol": 1e-4,
         "uf": {
@@ -65,8 +60,8 @@
     "output_options": 
     {        
         "show_residuals": true,
-        "show_3D_plots": false,
-        "show_1D_plots": true
+        "show_3D_plots": true,
+        "show_1D_plots": false
     },
 
 

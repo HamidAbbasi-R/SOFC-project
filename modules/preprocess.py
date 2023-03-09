@@ -58,14 +58,15 @@ def sourcefunc_calc(inputs, TPB_dict):
     # If normalized mole fractions should be used, actual mole fractions (xH2, and xH2O) should 
     # be devided by the standard mole fraction. 
     # The unit for this equation is not clear. It is not clear if it is [A/m] or [A/cm] or anything similar.
-    I0a_l = 31.4 * (pH2*101325)**(-0.03) * (pH2O*101325)**(0.4) * np.exp(-152155/R/T)  
+    # I0a_l = 31.4 * (pH2*101325)**(-0.03) * (pH2O*101325)**(0.4) * np.exp(-152155/R/T)  
+    I0a_l = 100 * 2.14e-10 * 1e6      # from Shearing et al. 2010 for T=900 C [A/m]  (for test purposes)
 
     # The way that lineal exchange current density is transformed to volumetric exchange
     # current density is not clear. Two possible conversion factors can be used. 
     # Is the conversion factor correct?
     conversion_fac_1 = dx / dx**3       # [m/m3]
     conversion_fac_2 = TPB_dict['TPB_density']      # [m/m3]
-    I0a = I0a_l*conversion_fac_1      # Exchange current density, anode [A/m^3]
+    I0a = I0a_l*conversion_fac_2      # Exchange current density, anode [A/m^3]
 
     # Tseronis et al. 2012 model for anode current density
     if inputs['solver_options']['ion_only']:
@@ -367,10 +368,11 @@ def get_indices(inputs, domain, TPB_mask_old, ds, phase):
 
 def create_SOLE_individual(inputs, bc_dict, indices, masks_dict):
     print('Writing Jacobian and rhs matrix...', end=' ')
-    K = [
-        inputs['operating_conditions']['conductivity']['cH2'], 
-        inputs['operating_conditions']['conductivity']['Vel'], 
-        inputs['operating_conditions']['conductivity']['Vio']]
+    import numpy as np
+    cond_H2 = 2.17e6        # [m^2/s]
+    cond_el = 3.27e6 - 1065.3 * inputs['operating_conditions']['temperature']       # [S/m]
+    cond_ion = 3.34e4 * np.exp(-10350/inputs['operating_conditions']['temperature'])    # [S/m]
+    K = [cond_H2, cond_el, cond_ion] 
 
     N = [
         inputs['microstructure']['Nx'], 

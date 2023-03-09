@@ -212,7 +212,8 @@ def create_TPB_field_variable_individual(inputs, phi_dense, indices, masks_dict,
     TPB_mat[TPB_mat==0] = np.nan
     return TPB_mat
 
-def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_up=None, x_title='x', y_title='y', title=None, save_file=False):
+def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_up=None, 
+                               x_title='x', y_title='y', title=None, save_file=False, log_type="linear"):
     import plotly.graph_objects as go
     from modules.file_options import get_directory
 
@@ -295,6 +296,7 @@ def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_
 
     fig.update_xaxes(exponentformat="SI") 
     fig.update_yaxes(exponentformat="e")
+    fig.update_yaxes(type=log_type)
     fig.show()
     if save_file:
         file_dir = dir + f'svg/{title if title is not None else "fig"}.svg'
