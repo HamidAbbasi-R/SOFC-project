@@ -21,16 +21,16 @@
         "sig_gen": 3,
         "seed": [20,12],
         "volume_fractions": {
-            "pores": 0.3,
+            "pores": 0.496,
             "Ni": 0.253,
-            "YSZ": 0.4
+            "YSZ": 0.251
         },
         "dx": 50e-09
     },
 
     "boundary_conditions": 
     {
-        "pH2_inlet": 0.96,
+        "pH2_inlet": 0.98,
         "pH2_b": 0.97,
         "Vel_b": 0.05,
         "Vio_b": 0.0
