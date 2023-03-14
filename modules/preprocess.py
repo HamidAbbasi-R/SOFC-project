@@ -64,9 +64,10 @@ def sourcefunc_calc(inputs, TPB_dict):
     # The way that lineal exchange current density is transformed to volumetric exchange
     # current density is not clear. Two possible conversion factors can be used. 
     # Is the conversion factor correct?
+    # conversion factor 1 is larger than conversion factor 2.
     conversion_fac_1 = dx / dx**3       # [m/m3]
     conversion_fac_2 = TPB_dict['TPB_density']      # [m/m3]
-    I0a = I0a_l*conversion_fac_2      # Exchange current density, anode [A/m^3]
+    I0a = I0a_l*conversion_fac_1      # Exchange current density, anode [A/m^3]
 
     # Tseronis et al. 2012 model for anode current density
     if inputs['solver_options']['ion_only']:
@@ -370,8 +371,8 @@ def create_SOLE_individual(inputs, bc_dict, indices, masks_dict):
     print('Writing Jacobian and rhs matrix...', end=' ')
     import numpy as np
     cond_H2 = 2.17e6        # [m^2/s]
-    cond_el = 3.27e6 - 1065.3 * inputs['operating_conditions']['temperature']       # [S/m]
-    cond_ion = 3.34e4 * np.exp(-10350/inputs['operating_conditions']['temperature'])    # [S/m]
+    cond_el = 3.27e6 - 1065.3 * inputs['operating_conditions']['T']       # [S/m]
+    cond_ion = 3.34e4 * np.exp(-10350/inputs['operating_conditions']['T'])    # [S/m]
     K = [cond_H2, cond_el, cond_ion] 
 
     N = [
