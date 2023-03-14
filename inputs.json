@@ -1,9 +1,9 @@
 {
     "file_options": 
     {
-        "new_case":         true,
+        "new_case":         false,
         "load_case":        false,
-        "load_case_data":   false,
+        "load_case_data":   true,
         "save_case":        true,
         "save_data":        true,
         "case_id": "case_400_100_N",

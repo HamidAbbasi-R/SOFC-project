@@ -752,3 +752,38 @@ def topological_operations_entire_cell(inputs, domain):
         pp.visualize_mesh([domain],[()])
         
     return domain, TPB_dict
+
+def create_idealized_microstructure(voxels, TPB_radius):
+    # This function creates an idealized microstructure with two spheres in one
+    # third and two thirds of the domain. The TPB length can then be calculated 
+    # analytically. This is useful for testing the TPB length calculation.
+ 
+    import numpy as np
+    # voxels = [TPB_radius*4] * 3
+    domain = np.zeros(shape = voxels, dtype = int)
+
+    centers = np.array([[voxels[0]//3, voxels[1]//2, voxels[2]//2], 
+                        [2*voxels[0]//3, voxels[1]//2, voxels[2]//2]])
+    
+    # radius of two spheres in the domain
+    phase_radius = ((voxels[0]//6)**2 + TPB_radius**2)**0.5
+    
+    # create the two spheres
+    for i in range(voxels[0]):
+        for j in range(voxels[1]):
+            for k in range(voxels[2]):
+                if (i-centers[0,0])**2 + (j-centers[0,1])**2 + (k-centers[0,2])**2 < phase_radius**2 and i<=voxels[0]//2:
+                    domain[i,j,k] = 1
+                if (i-centers[1,0])**2 + (j-centers[1,1])**2 + (k-centers[1,2])**2 < phase_radius**2 and i>voxels[0]//2:
+                    domain[i,j,k] = 2
+
+    TPB_analytical = 2*TPB_radius * np.pi
+    _, density, vertices, lines = measure_TPB(domain, 1)
+    TPB_measured = density * voxels[0] * voxels[1] * voxels[2]
+
+    from modules.postprocess import visualize_mesh as vm
+    import pyvista as pv
+    TPB_mesh = pv.PolyData(vertices, lines=lines)
+    vm([domain], [(1,1)], TPB_mesh=TPB_mesh)
+
+    return TPB_analytical, TPB_measured
