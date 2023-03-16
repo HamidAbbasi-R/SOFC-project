@@ -167,9 +167,9 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_file=
                 Ia_c_down[i], Ia_c_up[i] = mean_confidence_interval(a)
                 
                 vol[i] = len(a)*dx**3 # [m3]
-                Ia_A_lin[i] = np.average(a)*vol[i]/area # [A/m2] 
-                Ia_A_min[i] = np.min(a)*vol[i]/area # [A/m2]
-                Ia_A_max[i] = np.max(a)*vol[i]/area # [A/m2]
+                Ia_A_lin[i] = Ia_lin[i]*vol[i]/area # [A/m2] 
+                Ia_A_max[i] = Ia_max[i]*vol[i]/area # [A/m2]
+                Ia_A_min[i] = Ia_min[i]*vol[i]/area # [A/m2]
                 Ia_A_c_down[i] = Ia_c_down[i]*vol[i]/area # [A/m2]
                 Ia_A_c_up[i] = Ia_c_up[i]*vol[i]/area # [A/m2]
 

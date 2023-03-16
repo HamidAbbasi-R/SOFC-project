@@ -1,11 +1,11 @@
 {
     "file_options": 
     {
-        "new_case":         false,
+        "new_case":         true,
         "load_case":        false,
-        "load_case_data":   true,
-        "save_case":        true,
-        "save_data":        true,
+        "load_case_data":   false,
+        "save_case":        false,
+        "save_data":        false,
         "case_id": "case_400_100_N",
         "data_id": "data_400_100_N"
     },
@@ -15,7 +15,7 @@
     {
         "reduced_geometry": false,
         "Nx_extended": 800,
-        "Nx": 400,
+        "Nx": 200,
         "Ny": 100,
         "Nz": 100,
         "sig_gen": 3,
@@ -30,9 +30,9 @@
 
     "boundary_conditions": 
     {
-        "pH2_inlet": 0.98,
+        "pH2_inlet": 0.97,
         "pH2_b": 0.97,
-        "Vel_b": 0.05,
+        "Vel_b": 0.01,
         "Vio_b": 0.0
     },
     
