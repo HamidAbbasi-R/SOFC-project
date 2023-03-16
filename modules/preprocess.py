@@ -58,6 +58,7 @@ def sourcefunc_calc(inputs, TPB_dict):
     # If normalized mole fractions should be used, actual mole fractions (xH2, and xH2O) should 
     # be devided by the standard mole fraction. 
     # The unit for this equation is not clear. It is not clear if it is [A/m] or [A/cm] or anything similar.
+    # by comparing this equation with other values reported elsewhere, I think that the unit is [A/m].
     I0a_l = 31.4 * (pH2*101325)**(-0.03) * (pH2O*101325)**(0.4) * np.exp(-152155/R/T)  
     # I0a_l = 100 * 2.14e-10 * 1e6      # from Shearing et al. 2010 for T=900 C [A/m]  (for test purposes)
 
