@@ -4,10 +4,10 @@
         "new_case":         true,
         "load_case":        false,
         "load_case_data":   false,
-        "save_case":        false,
-        "save_data":        false,
-        "case_id": "case_400_100_N",
-        "data_id": "data_400_100_N"
+        "save_case":        true,
+        "save_data":        true,
+        "case_id": "case_test",
+        "data_id": "data_test"
     },
 
 
@@ -15,9 +15,9 @@
     {
         "reduced_geometry": false,
         "Nx_extended": 800,
-        "Nx": 200,
-        "Ny": 100,
-        "Nz": 100,
+        "Nx": 400,
+        "Ny": 50,
+        "Nz": 50,
         "sig_gen": 3,
         "seed": [20,12],
         "volume_fractions": {
