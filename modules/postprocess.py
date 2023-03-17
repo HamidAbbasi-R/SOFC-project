@@ -355,10 +355,10 @@ def visualize_mesh(mat, thd=[()], blocks=[], titles=[], clip_widget=False, TPB_m
     """
     import numpy as np
     import pyvista as pv
-    # import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt
     
     pv.set_plot_theme("document")
-    # cmap = plt.cm.get_cmap("jet")
+    cmap = plt.cm.get_cmap("jet")
 
     subplts = len(mat)
     
@@ -387,13 +387,13 @@ def visualize_mesh(mat, thd=[()], blocks=[], titles=[], clip_widget=False, TPB_m
         p.subplot(0, i)
         # mesh.save(f"mesh{i}.vtk")
         if clip_widget:
-            p.add_mesh_clip_plane(mesh, scalar_bar_args={'title': f'Phase{i+1}'})#, cmap=cmap)
+            p.add_mesh_clip_plane(mesh, scalar_bar_args={'title': f'Phase{i+1}'}, cmap=cmap)
         else:
-            p.add_mesh(mesh, scalar_bar_args=sargs, log_scale=scale)#, cmap=cmap)#, show_edges=True)
+            p.add_mesh(mesh, scalar_bar_args=sargs, log_scale=scale, cmap=cmap)#, show_edges=True)
             if bool(titles):
                 p.add_text(titles[i], font_size=20, position='lower_edge')
             if bool(TPB_mesh):
-                p.add_mesh(TPB_mesh, line_width=3, color='k')
+                p.add_mesh(TPB_mesh, line_width=10, color='k')
                 # for j in range(len(TPB_mesh)):
                     # p.add_mesh(TPB_mesh[j], line_width=3, color='k')
         p.add_bounding_box(line_width=1, color='black')
