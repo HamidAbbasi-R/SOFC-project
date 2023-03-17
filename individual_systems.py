@@ -56,10 +56,15 @@ def solve_individual_systems():
 
     elif file_options['load_case_data']:
         inputs_old, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict, phi, residuals = fop.load_case_data_individual(file_options['case_id'], file_options['data_id'])
-        if (inputs['microstructure'] != inputs_old['microstructure'] or 
-            inputs['boundary_conditions'] != inputs_old['boundary_conditions'] or 
-            inputs['operating_conditions'] != inputs_old['operating_conditions']): 
-            raise Exception('Microstructure, boundary conditions, or operating conditions do not match!')
+        if inputs['microstructure'] != inputs_old['microstructure']: 
+            raise Exception('Microstructure does not match!')
+        if (inputs['boundary_conditions'] != inputs_old['boundary_conditions'] or 
+            inputs['operating_conditions'] != inputs_old['operating_conditions']):
+            field_functions, _, bc_dict = prep.sourcefunc_calc(inputs, TPB_dict)
+            J, rhs, sum_nb = prep.create_SOLE_individual(inputs, bc_dict, indices, masks_dict)
+            if inputs['file_options']['save_case']:
+                fop.save_case_individual(file_options['case_id'],
+                    inputs, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict)
 
 
     phi, residuals = slv.Newton_loop_individual(inputs, J, rhs, phi, indices, field_functions, masks_dict, sum_nb, residuals)
