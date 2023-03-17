@@ -375,7 +375,7 @@ def create_SOLE_individual(inputs, bc_dict, indices, masks_dict):
     import numpy as np
     cond_H2 = 2.17e6        # [m^2/s]
     cond_el = 3.27e6 - 1065.3 * inputs['operating_conditions']['T']       # [S/m]
-    cond_ion = 3.34e4 * np.exp(-10350/inputs['operating_conditions']['T'])    # [S/m]
+    cond_ion = 0.3 * 3.34e4 * np.exp(-10350/inputs['operating_conditions']['T'])    # [S/m]
     K = [cond_H2, cond_el, cond_ion] 
 
     N = [
