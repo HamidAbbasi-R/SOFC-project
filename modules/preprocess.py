@@ -65,7 +65,7 @@ def sourcefunc_calc(inputs, TPB_dict):
     # The way that lineal exchange current density is transformed to volumetric exchange
     # current density is not clear. Two possible conversion factors can be used. 
     # Is the conversion factor correct?
-    # conversion factor 1 is larger than conversion factor 2.
+    # conversion factor 1 is larger than conversion factor 2 and 3.
     conversion_fac_1 = dx / dx**3       # [m/m3]
     conversion_fac_2 = TPB_dict['TPB_density']      # [m/m3]
     conversion_fac_3 = 5e12      # [m/m3] typical TPB density reported in Prokop PhD thesis
