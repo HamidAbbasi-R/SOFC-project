@@ -68,7 +68,7 @@ def sourcefunc_calc(inputs, TPB_dict):
     # conversion factor 1 is larger than conversion factor 2.
     conversion_fac_1 = dx / dx**3       # [m/m3]
     conversion_fac_2 = TPB_dict['TPB_density']      # [m/m3]
-    conversion_fac_3 = 5e12      # [m/m3] typical TPB density
+    conversion_fac_3 = 5e12      # [m/m3] typical TPB density reported in Prokop PhD thesis
     I0a = I0a_l*conversion_fac_1      # volumetric Exchange current density, anode [A/m^3]
 
     # Tseronis et al. 2012 model for anode current density
