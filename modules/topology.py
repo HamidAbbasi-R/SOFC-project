@@ -679,7 +679,7 @@ def create_microstructure(inputs):
 
     return domain
 
-def topological_operations(inputs, domain):
+def topological_operations(inputs, domain, show_TPB=False):
     """
     domain topological operations
     """
@@ -702,6 +702,13 @@ def topological_operations(inputs, domain):
         'vertices': vertices,
         'lines': lines
     }
+
+    if show_TPB:
+        import pyvista as pv
+        TPB_mesh = pv.PolyData(vertices, lines=lines)
+        from modules.postprocess import visualize_mesh as vm
+        vm([domain], [(1,1)], clip_widget=False, TPB_mesh=TPB_mesh)
+
     return domain, TPB_dict
 
 # specific functions for entire cell microstructure
