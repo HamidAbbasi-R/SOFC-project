@@ -68,7 +68,8 @@ def sourcefunc_calc(inputs, TPB_dict):
     # conversion factor 1 is larger than conversion factor 2.
     conversion_fac_1 = dx / dx**3       # [m/m3]
     conversion_fac_2 = TPB_dict['TPB_density']      # [m/m3]
-    I0a = I0a_l*conversion_fac_1      # Exchange current density, anode [A/m^3]
+    conversion_fac_3 = 5e12      # [m/m3] typical TPB density
+    I0a = I0a_l*conversion_fac_1      # volumetric Exchange current density, anode [A/m^3]
 
     # Tseronis et al. 2012 model for anode current density
     if inputs['solver_options']['ion_only']:
@@ -80,8 +81,9 @@ def sourcefunc_calc(inputs, TPB_dict):
         
 
     eta_a_act = Vel - Vio - eta_a_con                      # anode activation overpotential [V]
-    Ia = I0a*(exp(2*aa*F*eta_a_act/R/T)
-             -exp(-2*(1-aa)*F*eta_a_act/R/T))               # anode current density [A/m^3]
+    n = 2       # number of electrons transferred per reaction
+    Ia = I0a*(exp( n*   aa * F * eta_a_act /R/T)
+             -exp(-n*(1-aa)* F * eta_a_act /R/T))               # anode current density [A/m^3]
 
     # Shearing et al. 2010 model for anode current density
     # Voe = 1.23 - 2.304e-4*(T-298.15)        # standard potential [V]
