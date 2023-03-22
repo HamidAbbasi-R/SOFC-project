@@ -373,11 +373,9 @@ def get_indices(inputs, domain, TPB_mask_old, ds, phase):
 def create_SOLE_individual(inputs, bc_dict, indices, masks_dict):
     print('Writing Jacobian and rhs matrix...', end=' ')
     import numpy as np
-    por_YSZ = inputs['microstructure']['volume_fractions']['YSZ']
-    tor_YSZ = 8.85          # tortuosity of YSZ phase, according to Kishimoto et al. (2011)
     cond_H2 = 2.17e6        # [m^2/s]
     cond_el = 3.27e6 - 1065.3 * inputs['operating_conditions']['T']       # [S/m]
-    cond_ion = por_YSZ/tor_YSZ * 3.34e4 * np.exp(-10350/inputs['operating_conditions']['T'])    # [S/m]
+    cond_ion = 3.34e4 * np.exp(-10350/inputs['operating_conditions']['T'])    # [S/m]
     K = [cond_H2, cond_el, cond_ion] 
 
     N = [
