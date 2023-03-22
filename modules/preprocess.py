@@ -59,7 +59,10 @@ def sourcefunc_calc(inputs, TPB_dict):
     # be devided by the standard mole fraction. 
     # The unit for this equation is not clear. It is not clear if it is [A/m] or [A/cm] or anything similar.
     # by comparing this equation with other values reported elsewhere, I think that the unit is [A/m].
+    # Boer model:
     I0a_l = 31.4 * (pH2*101325)**(-0.03) * (pH2O*101325)**(0.4) * np.exp(-152155/R/T)  
+    # Bieberle model:
+    # I0a_l = 0.0013 * (pH2*101325)**(0.11) * (pH2O*101325)**(0.67) * np.exp(-0.849e5/R/T)
     # I0a_l = 100 * 2.14e-10 * 1e6      # from Shearing et al. 2010 for T=900 C [A/m]  (for test purposes)
 
     # The way that lineal exchange current density is transformed to volumetric exchange
@@ -69,7 +72,7 @@ def sourcefunc_calc(inputs, TPB_dict):
     conversion_fac_1 = dx / dx**3       # [m/m3]
     conversion_fac_2 = TPB_dict['TPB_density']      # [m/m3]
     conversion_fac_3 = 5e12      # [m/m3] typical TPB density reported in Prokop PhD thesis
-    I0a = I0a_l*conversion_fac_1      # volumetric Exchange current density, anode [A/m^3]
+    I0a = 10*I0a_l*conversion_fac_1      # volumetric Exchange current density, anode [A/m^3]
 
     # Tseronis et al. 2012 model for anode current density
     if inputs['solver_options']['ion_only']:
