@@ -61,7 +61,7 @@ def sourcefunc_calc(inputs, TPB_dict):
     # by comparing this equation with other values reported elsewhere, I think that the unit is [A/m].
     # Boer model:
     I0a_l = 31.4 * (pH2*101325)**(-0.03) * (pH2O*101325)**(0.4) * np.exp(-152155/R/T)  
-    # Bieberle model:
+    # Bieberle model: (It's not very different from Boer model, refer to )
     # I0a_l = 0.0013 * (pH2*101325)**(0.11) * (pH2O*101325)**(0.67) * np.exp(-0.849e5/R/T)
     # I0a_l = 100 * 2.14e-10 * 1e6      # from Shearing et al. 2010 for T=900 C [A/m]  (for test purposes)
 
