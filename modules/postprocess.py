@@ -168,12 +168,14 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
                 
                 vol[i] = vol_fac*len(a)*dx**3 # [m3]
                 Ia_A_lin[i] = Ia_lin[i]*vol[i]/area # [A/m2] 
-                Ia_A_max[i] = Ia_max[i]*vol[i]/area # [A/m2]
-                Ia_A_min[i] = Ia_min[i]*vol[i]/area # [A/m2]
-                Ia_A_c_down[i] = Ia_c_down[i]*vol[i]/area # [A/m2]
-                Ia_A_c_up[i] = Ia_c_up[i]*vol[i]/area # [A/m2]
+                # minimum and maximum value for area-specific current density in each slice 
+                # does not have any physical meaning
+                # Ia_A_max[i] = Ia_max[i]*vol[i]/area # [A/m2]
+                # Ia_A_min[i] = Ia_min[i]*vol[i]/area # [A/m2]
+                # Ia_A_c_down[i] = Ia_c_down[i]*vol[i]/area # [A/m2]
+                # Ia_A_c_up[i] = Ia_c_up[i]*vol[i]/area # [A/m2]
 
-        plot_with_continuous_error(x, Ia_A_lin, Ia_A_min, Ia_A_max, Ia_A_c_down, Ia_A_c_up, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title='Area-specific current density', save_file=save_file)
+        plot_with_continuous_error(x, Ia_A_lin, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title='Area-specific current density', save_file=save_file)
         plot_with_continuous_error(x, Ia_lin, Ia_min, Ia_max, Ia_c_down, Ia_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title='Volumetric current density', save_file=save_file)
     
 
