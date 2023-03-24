@@ -40,7 +40,7 @@ def solve_individual_systems():
         if file_options['save_case']:
             fop.save_case_individual(file_options['case_id'],
                 inputs, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict)
-        phi, residuals = prep.initilize_field_variables_individual(inputs, masks_dict, indices, inputs['is_multiple_instances'], inputs['M_instances'], inputs['scaling_factor'])
+        phi, residuals = prep.initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict, inputs['is_multiple_instances'], inputs['M_instances'], inputs['scaling_factor'])
 
     elif file_options['load_case']:
         inputs_old, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict = fop.load_case_individual(file_options['case_id'])
@@ -52,7 +52,7 @@ def solve_individual_systems():
             if inputs['file_options']['save_case']:
                 fop.save_case_individual(file_options['case_id'],
                     inputs, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict)
-        phi, residuals = prep.initilize_field_variables_individual(inputs, masks_dict, indices, inputs['is_multiple_instances'], inputs['M_instances'], inputs['scaling_factor'])
+        phi, residuals = prep.initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict, inputs['is_multiple_instances'], inputs['M_instances'], inputs['scaling_factor'])
 
     elif file_options['load_case_data']:
         inputs_old, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict, phi, residuals = fop.load_case_data_individual(file_options['case_id'], file_options['data_id'])
@@ -98,6 +98,7 @@ def solve_individual_systems():
                 'eta_act_3D':   False,
                 'eta_con_3D':   False,
             },
+            vol_fac=inputs['microstructure']['vol_fac'],
             save_file=True)
         
     end = time.time()
