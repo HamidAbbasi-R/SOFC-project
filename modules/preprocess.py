@@ -5,34 +5,25 @@ def sourcefunc_calc(inputs, TPB_dict):
     # Constants
     dx = inputs['microstructure']['dx']
     MH2 = 2.01588e-3        # Molar weight of hydrogen [kg/mol]
-    MH2O = 18.01528e-3      # Molar weight of water [kg/mol]
-    rhoH2 = 0.0251          # Density of hydrogen [kg/m^3]
-    rhoH2O = 997            # Density of water [kg/m^3]
-    R = 8.31446261815324    # Universal gas constant [J/mol/K]
+    Ru = 8.31446261815324   # Universal gas constant [J/mol/K]
     F = 96485.33289         # Faraday's constant [C/mol]
     aa = 0.5                # anode transfer coefficient []
 
     T = inputs['operating_conditions']['T']
-    # I0a_l = inputs['I0a_l']
 
     # boundary conditions
-    pH2_b = inputs['boundary_conditions']['pH2_b']
-    Vel_b = inputs['boundary_conditions']['Vel_b']
-    Vio_b = inputs['boundary_conditions']['Vio_b']
-    pH2_inlet = inputs['boundary_conditions']['pH2_inlet']
-
+    pH2_b = inputs['boundary_conditions']['pH2_b'] * 101325      # partial pressure of hydrogen @ anode boundary, bulk [Pa]
+    pH2_inlet = inputs['boundary_conditions']['pH2_inlet'] * 101325      # partial pressure of hydrogen @ fuel cell inlet [Pa]
+    ptot = inputs['operating_conditions']['P'] * 101325       # total pressure [Pa]
+    Vel_b = inputs['boundary_conditions']['Vel_b']      # electron potential @ anode boundary, bulk [V]
+    Vio_b = inputs['boundary_conditions']['Vio_b']      # ion potential @ anode boundary, bulk [V]
 
     # other variables
-    pH2O_b = inputs['operating_conditions']['P'] - pH2_b          # partial pressure of H2O [atm]
-    pH2O_inlet = inputs['operating_conditions']['P'] - pH2_inlet  # partial pressure of H2O @ fuel cell inlet [atm]
-    ptot = inputs['operating_conditions']['P']       # total pressure [atm]
-    
-    xH2_b = pH2_b/ptot          # mole fraction of hydrogen @ anode boundary, bulk []
-    xH2_inlet = pH2_inlet/ptot  # mole fraction of hydrogen @ fuel cell inlet []
-    xH2O_b = pH2O_b/ptot        # mole fraction of water @ anode boundary, bulk []
-    xH2O_inlet = pH2O_inlet/ptot    # mole fraction of water @ fuel cell inlet []
-    
-    cH2_b = rhoH2*xH2_b         # Hydrogen concentration @ anode boundary, bulk [kg/m^3] - boundary condition
+    pH2O_b = ptot - pH2_b          # partial pressure of H2O @ anode boundary, bulk [Pa]
+    pH2O_inlet = ptot - pH2_inlet  # partial pressure of H2O @ fuel cell inlet [Pa]
+
+    # concentrations (or mass densities)
+    cH2_b = pH2_b*MH2/Ru/T               # Hydrogen concentration @ anode boundary, bulk [kg/m^3] - boundary condition
 
     # symbolic expressions
     cH2 = symbols('cH2')    # hydrogen mass fraction [pores]
@@ -40,10 +31,8 @@ def sourcefunc_calc(inputs, TPB_dict):
     Vio = symbols('Vio')    # ion potential [YSZ]
     vars = [cH2, Vel, Vio]
 
-    xH2 = cH2/rhoH2             # mole fraction of hydrogen, symbolic []
-    pH2 = ptot*xH2         # partial pressure of hydrogen, symbolic [atm]
-    pH2O = ptot - pH2           # partial pressure of water, symbolic [atm]
-    xH2O = pH2O/ptot       # mole fraction of water, symbolic []
+    pH2 = cH2*Ru*T/MH2         # partial pressure of hydrogen, symbolic [Pa]
+    pH2O = ptot - pH2          # partial pressure of water, symbolic [Pa]
     
     # ??? Exchange current per TPB length, anode [A/m], Prokop et al. 2018 
     # This equation is not correct right now. I'm not sure what variables should be used instead
@@ -60,9 +49,9 @@ def sourcefunc_calc(inputs, TPB_dict):
     # The unit for this equation is not clear. It is not clear if it is [A/m] or [A/cm] or anything similar.
     # by comparing this equation with other values reported elsewhere, I think that the unit is [A/m].
     # Boer model:
-    I0a_l = 31.4 * (pH2*101325)**(-0.03) * (pH2O*101325)**(0.4) * np.exp(-152155/R/T)  
+    I0a_l = 31.4 * (pH2)**(-0.03) * (pH2O)**(0.4) * np.exp(-152155/Ru/T)  
     # Bieberle model: (It's not very different from Boer model, refer to )
-    # I0a_l = 0.0013 * (pH2*101325)**(0.11) * (pH2O*101325)**(0.67) * np.exp(-0.849e5/R/T)
+    # I0a_l = 0.0013 * (pH2)**(0.11) * (pH2O)**(0.67) * np.exp(-0.849e5/R/T)
     # I0a_l = 100 * 2.14e-10 * 1e6      # from Shearing et al. 2010 for T=900 C [A/m]  (for test purposes)
 
     # The way that lineal exchange current density is transformed to volumetric exchange
@@ -72,21 +61,21 @@ def sourcefunc_calc(inputs, TPB_dict):
     conversion_fac_1 = dx / dx**3       # [m/m3]
     conversion_fac_2 = TPB_dict['TPB_density']      # [m/m3]
     conversion_fac_3 = 5e12      # [m/m3] typical TPB density reported in Prokop PhD thesis
-    I0a = 10*I0a_l*conversion_fac_1      # volumetric Exchange current density, anode [A/m^3]
+    I0a = I0a_l*conversion_fac_1      # volumetric Exchange current density, anode [A/m^3]
 
     # Tseronis et al. 2012 model for anode current density
+    n = 2       # number of electrons transferred per reaction
     if inputs['solver_options']['ion_only']:
-        eta_a_con = R*T/2/F*log(xH2_inlet/xH2_b*xH2O_b/xH2O_inlet)         # anode concentration overpotential [V]
+        eta_a_con = Ru*T/n/F*log(pH2_inlet/pH2_b*pH2O_b/pH2O_inlet)         # anode concentration overpotential [V]
         if eta_a_con > (Vel_b - Vio_b):
             raise ValueError('Concentration overpotential is greater than the sum of the electrode overpotentials.')
     else:
-        eta_a_con = R*T/2/F*log(xH2_inlet/xH2*xH2O/xH2O_inlet)         # anode concentration overpotential [V]
+        eta_a_con = Ru*T/n/F*log(pH2_inlet/pH2*pH2O/pH2O_inlet)         # anode concentration overpotential [V]
         
 
     eta_a_act = Vel - Vio - eta_a_con                      # anode activation overpotential [V]
-    n = 2       # number of electrons transferred per reaction
-    Ia = I0a*(exp( n*   aa * F * eta_a_act /R/T)
-             -exp(-n*(1-aa)* F * eta_a_act /R/T))               # anode current density [A/m^3]
+    Ia = I0a*(exp( n*   aa * F * eta_a_act /Ru/T)
+             -exp(-n*(1-aa)* F * eta_a_act /Ru/T))               # anode current density [A/m^3]
 
     # Shearing et al. 2010 model for anode current density
     # Voe = 1.23 - 2.304e-4*(T-298.15)        # standard potential [V]
@@ -97,7 +86,7 @@ def sourcefunc_calc(inputs, TPB_dict):
 
     # initialize the source function list
     source_func = [None]*3         # initialization
-    source_func[0] = simplify(-Ia/2/F*MH2) if inputs['solver_options']['ion_only'] is False else None # mass [kg/m3/s]
+    source_func[0] = simplify(-Ia/n/F*MH2) if inputs['solver_options']['ion_only'] is False else None # mass [kg/m3/s]
     source_func[1] = simplify(-Ia) if inputs['solver_options']['ion_only'] is False else None            # electron [A/m3]
     source_func[2] = simplify(Ia)           # ion [A/m3]
     expected_sign = [-1,-1,1]             # expected sign of the source terms
@@ -248,67 +237,6 @@ def get_indices(inputs, domain, TPB_mask_old, ds, phase):
             flag_west, flag_east = WE_res.result()
             flag_south, flag_north = SN_res.result()
             flag_bottom, flag_top = BT_res.result()
-    
-    # # identifying the west-east pairs of elements 
-    # a = 0
-    # b = []
-    # for n in range(len(ind_west_stack)):
-    #     if inputs['solver_options']['ion_only'] and phase!=2: break
-    #     while np.any(ind_east_stack[n,:] != ind_stack[a,:]):
-    #         a += 1
-    #     b = b+1 if b!=[] else a+1
-    #     while np.any(ind_west_stack[n,:] != ind_stack[b,:]):
-    #         b += 1
-    #     flag_west[b] = a
-    #     flag_east[a] = b
-
-    # # identifying the south-north pairs of elements
-    # a = 0
-    # b = []
-    # for n in range(len(ind_south_stack)):
-    #     if inputs['solver_options']['ion_only'] and phase!=2: break
-    #     while np.any(ind_north_stack[n,:] != ind_stack[a,:]):
-    #         a += 1
-    #     b = b+1 if b!=[] else a+1
-    #     while np.any(ind_south_stack[n,:] != ind_stack[b,:]):
-    #         b += 1
-    #     flag_south[b] = a
-    #     flag_north[a] = b
-
-    # # identifying the bottom-top pairs of elements
-    # a = 0
-    # b = []
-    # for n in range(len(ind_bottom_stack)):
-    #     if inputs['solver_options']['ion_only'] and phase!=2: break
-    #     while np.any(ind_top_stack[n,:] != ind_stack[a,:]):
-    #         a += 1
-    #     b = b+1 if b!=[] else a+1
-    #     while np.any(ind_bottom_stack[n,:] != ind_stack[b,:]):
-    #         b += 1
-    #     flag_bottom[b] = a
-    #     flag_top[a] = b
-    
-    # if phase==2: print('Time for get_flags (serial): ', time()-t)
-    # print('dummy line')
-    # another method to find the indices of the neighbors [yields the same result but enifficient when N is large]
-    # flag_west2, flag_east2, flag_south2, flag_north2, flag_bottom2, flag_top2 = np.zeros(shape=(6, L), dtype=int)-1
-    # t = time.time()
-    # for n in range(L):
-    #     # os.system('cls')
-    #     print('processing point {}/{}'.format(n+1, L))
-    #     i,j,k = ind_stack[n,:]
-        
-    #     a = np.where(np.all(np.equal([i-1,j,k], ind_stack[:n]), axis=1))[0]
-    #     flag_west2[n] = a if len(a) else -1
-    #     flag_east2[a] = n
-        
-    #     a = np.where(np.all(np.equal([i,j-1,k], ind_stack[:n]), axis=1))[0]
-    #     flag_south2[n] = a if len(a) else -1
-    #     flag_north2[a] = n
-
-    #     a = np.all([i,j,k-1] == ind_stack[n-1])
-    #     flag_bottom2[n] = n-1 if a else -1
-    #     flag_top2[n-1] = n if a else -1
     
 
     # Indices of west, east, south, north, bottom, top boundaries
@@ -577,7 +505,7 @@ def interior_individual(J, indices, K, ds, dx, bc, isMi, M_ins=None, scaling_fac
     
     return J, sum_nb
 
-def initilize_field_variables_individual(inputs, masks_dict, indices, isMi, M_instances = None, scaling_factor = None):
+def initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict, isMi, M_instances = None, scaling_factor = None):
     # initial guess
     import numpy as np
     print('Initializing field variables...', end = ' ')
@@ -586,13 +514,9 @@ def initilize_field_variables_individual(inputs, masks_dict, indices, isMi, M_in
     N_y = inputs['microstructure']['Ny']
     ds = masks_dict['ds']
 
-    rhoH2 = 0.0251       # Density of hydrogen [kg/m^3]
-    cH2_b = inputs['boundary_conditions']['pH2_b'] / inputs['operating_conditions']['P'] * rhoH2
-
-    init_cond = [
-        cH2_b, 
-        inputs['boundary_conditions']['Vel_b'], 
-        inputs['boundary_conditions']['Vio_b']]
+    init_cond = [bc_dict[0]['West'][1], 
+                 bc_dict[1]['West'][1], 
+                 bc_dict[2]['East'][1]]
 
     # if M_instances is None:
     for p in [0,1,2]:
