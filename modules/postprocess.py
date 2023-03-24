@@ -21,7 +21,7 @@ def visualize_residuals(inputs, residuals):
     fig.update_yaxes(exponentformat="e")
     fig.show()
 
-def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_file=False):
+def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1, save_file=False):
     # visualize the solution
     import numpy as np
     import pyvista as pv
@@ -166,7 +166,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_file=
                 Ia_min[i]  = np.min(a)
                 Ia_c_down[i], Ia_c_up[i] = mean_confidence_interval(a)
                 
-                vol[i] = len(a)*dx**3 # [m3]
+                vol[i] = vol_fac*len(a)*dx**3 # [m3]
                 Ia_A_lin[i] = Ia_lin[i]*vol[i]/area # [A/m2] 
                 Ia_A_max[i] = Ia_max[i]*vol[i]/area # [A/m2]
                 Ia_A_min[i] = Ia_min[i]*vol[i]/area # [A/m2]
