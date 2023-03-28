@@ -180,7 +180,7 @@ def measure_TPB(phase_mat, dx):
         TPB lines in the 3D domain. used for visualization in pyvista.
     """
     import numpy as np
-    from tqdm import tqdm
+    # from tqdm import tqdm
     from scipy import ndimage as ndi
 
     # extract the percolating phase matrix    
