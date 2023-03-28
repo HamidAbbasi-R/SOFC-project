@@ -1,4 +1,4 @@
-def solve_individual_systems():
+if __name__ == '__main__':
     """
     This function does the following:
     1. Reads the input file
@@ -70,26 +70,26 @@ def solve_individual_systems():
     phi, residuals = slv.Newton_loop_individual(inputs, J, rhs, phi, indices, field_functions, masks_dict, sum_nb, residuals)
     if file_options['save_data']:
         fop.save_data(file_options['data_id'], phi, residuals)
-    
+
 
     if inputs['output_options']['show_residuals']:
         post.visualize_residuals(inputs, residuals)
 
-    
+
     # scaling the electron and ion potentials to the original values
     phi[1] = phi[1] + scale_ion
     phi[2] = phi[2] + scale_ion
     dense_m = post.create_dense_matrices(phi, inputs, masks_dict, indices, field_functions)
-    
+
     if inputs['output_options']['show_3D_plots'] or inputs['output_options']['show_1D_plots']:
         post.visualize_3D_matrix(
             inputs, dense_m, masks_dict, TPB_dict,
             plots = {
                 'cH2_1D':       False,
                 'Vel_1D':       False,
-                'Vio_1D':       True,
-                'Ia_1D':        True,
-                'eta_act_1D':   True,
+                'Vio_1D':       False,
+                'Ia_1D':        False,
+                'eta_act_1D':   False,
                 'eta_con_1D':   False,
                 'cH2_3D':       False,
                 'Vel_3D':       False,
@@ -99,9 +99,8 @@ def solve_individual_systems():
                 'eta_con_3D':   False,
             },
             vol_fac=inputs['microstructure']['vol_fac'],
-            save_file=True)
+            save_file=False)
         
     end = time.time()
     print('Time elapsed: ', end - start)
-    return dense_m['Ia']
-            
+    # return dense_m['Ia']
