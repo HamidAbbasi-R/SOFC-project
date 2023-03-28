@@ -26,7 +26,6 @@ def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], periodic=
     # to circumvent this issue. scipy.ndimage.gaussian_filter
     # import skimage
     from scipy.ndimage import gaussian_filter
-    import plotly.express as px
 
     print("Generating microstructure...", end='')
     if sum(vol_frac) - 1 > 1e-2:
@@ -103,6 +102,7 @@ def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], periodic=
     
     # display the phase matrix
     if display==True and dim==2:
+        import plotly.express as px
         fig = px.imshow(np.rot90(phase_mat))
         fig.write_image("fig1.pdf")
         fig.show()
@@ -138,6 +138,7 @@ def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], periodic=
         fig.write_image("hist1D.svg")
         fig.show()
     elif histogram=='2D':
+        import plotly.express as px
         # fig = px.density_heatmap(x=smooth_mat_1.flatten(),
         #                           y=smooth_mat_2.flatten(),
         #                           marginal_x='histogram',marginal_y='histogram')
