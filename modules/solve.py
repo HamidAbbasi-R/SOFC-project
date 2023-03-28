@@ -57,6 +57,8 @@ def Newton_loop_individual(inputs, J, rhs, phi, indices, field_functions, masks_
 
         # check the convergence
         if max_res < inputs['solver_options']['tol'] and iter>5:
+            tol = inputs['solver_options']['tol']
+            print(f'Newton loop is converged to a tolerance of {tol} in {iter} iterations.')
             break
 
         iter += 1
