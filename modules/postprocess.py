@@ -306,8 +306,8 @@ def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_
     fig.update_yaxes(type=log_type)
     fig.show()
     if save_file:
-        file_dir = f'Binary files/svg/{title if title is not None else "fig"}.svg'
-        fig.write_image(file_dir)
+        file_dir = f'Binary files/svg/{title if title is not None else "fig"}.html'
+        fig.write_html(file_dir)
 
 def mean_confidence_interval(data, confidence=0.95):
     import numpy as np
