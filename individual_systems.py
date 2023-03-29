@@ -90,8 +90,8 @@ if __name__ == '__main__':
             plots = {
                 'cH2_1D':       False,
                 'Vel_1D':       False,
-                'Vio_1D':       False,
-                'Ia_1D':        False,
+                'Vio_1D':       True,
+                'Ia_1D':        True,
                 'eta_act_1D':   False,
                 'eta_con_1D':   False,
                 'cH2_3D':       False,
@@ -102,7 +102,7 @@ if __name__ == '__main__':
                 'eta_con_3D':   False,
             },
             vol_fac=inputs['microstructure']['vol_fac'],
-            save_file=False)
+            save_img=True)
         
     end = time.time()
     print('Time elapsed: ', end - start)
