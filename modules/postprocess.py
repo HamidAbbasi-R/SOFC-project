@@ -21,7 +21,7 @@ def visualize_residuals(inputs, residuals):
     fig.update_yaxes(exponentformat="e")
     fig.show()
 
-def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1, save_file=False):
+def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1, save_img=False):
     # visualize the solution
     import numpy as np
 
@@ -71,7 +71,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
             cH2_min[i] = np.min(a)
             cH2_c_down[i], cH2_c_up[i] = mean_confidence_interval(a)
         if csv_flag: create_csv_output(x, cH2_avg, cH2_min, cH2_max, cH2_c_down, cH2_c_up, 'cH2')
-        if plot1D_flag: plot_with_continuous_error(x, cH2_avg, cH2_c_down, cH2_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title='Hydrogen concentration', save_file=save_file)
+        if plot1D_flag: plot_with_continuous_error(x, cH2_avg, cH2_c_down, cH2_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title='Hydrogen concentration', save_img=save_img)
     
     if plots['Vel_1D'] and (plot1D_flag or csv_flag):
         Vel_avg = np.zeros(N[0])
@@ -86,7 +86,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
             Vel_min[i] = np.min(a)
             Vel_c_down[i], Vel_c_up[i] = mean_confidence_interval(a)
         if csv_flag: create_csv_output(x, Vel_avg, Vel_min, Vel_max, Vel_c_down, Vel_c_up, 'Vel')
-        if plot1D_flag: plot_with_continuous_error(x, Vel_avg, Vel_c_down, Vel_c_up, x_title='Distance from anode (µm)', y_title='Electron potential (V)', title='Electron potential', save_file=save_file)
+        if plot1D_flag: plot_with_continuous_error(x, Vel_avg, Vel_c_down, Vel_c_up, x_title='Distance from anode (µm)', y_title='Electron potential (V)', title='Electron potential', save_img=save_img)
 
     if plots['Vio_1D'] and (plot1D_flag or csv_flag):
         Vio_avg = np.zeros(N[0])
@@ -101,7 +101,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
             Vio_min[i] = np.min(a)
             Vio_c_down[i], Vio_c_up[i] = mean_confidence_interval(a)
         if csv_flag: create_csv_output(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, 'Vio')
-        if plot1D_flag: plot_with_continuous_error(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Ion potential (V)', title='Ion potential', save_file=save_file)
+        if plot1D_flag: plot_with_continuous_error(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Ion potential (V)', title='Ion potential', save_img=save_img)
 
     if plots['Ia_1D'] and (plot1D_flag or csv_flag):
         Ia_avg = np.zeros(N[0])
@@ -146,8 +146,8 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
 
         if csv_flag: create_csv_output(x, Ia_avg, Ia_min, Ia_max, Ia_c_down, Ia_c_up, 'Ia')
         if csv_flag: create_csv_output(x, Ia_A_avg, title='Ia_A')
-        if plot1D_flag: plot_with_continuous_error(x, Ia_A_avg, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title='Area-specific current density', save_file=save_file)
-        if plot1D_flag: plot_with_continuous_error(x, Ia_avg, Ia_min, Ia_max, Ia_c_down, Ia_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title='Volumetric current density', save_file=save_file)
+        if plot1D_flag: plot_with_continuous_error(x, Ia_A_avg, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title='Area-specific current density', save_img=save_img)
+        if plot1D_flag: plot_with_continuous_error(x, Ia_avg, Ia_min, Ia_max, Ia_c_down, Ia_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title='Volumetric current density', save_img=save_img)
     
 
     if inputs['output_options']['show_3D_plots']:
@@ -222,7 +222,7 @@ def create_TPB_field_variable_individual(inputs, phi_dense, indices, masks_dict,
     return TPB_mat
 
 def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_up=None, 
-                               x_title='x', y_title='y', title=None, save_file=False, log_type="linear"):
+                               x_title='x', y_title='y', title=None, save_img=False, log_type="linear"):
     import plotly.graph_objects as go
 
     x = [x] if type(x) is not list else x 
@@ -305,7 +305,7 @@ def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_
     fig.update_yaxes(exponentformat="e")
     fig.update_yaxes(type=log_type)
     fig.show()
-    if save_file:
+    if save_img:
         file_dir = f'Binary files/1D plots/graphs/{title if title is not None else "fig"}.html'
         fig.write_html(file_dir)
 
