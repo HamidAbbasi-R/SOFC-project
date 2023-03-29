@@ -145,7 +145,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
                 # Ia_A_c_up[i] = Ia_c_up[i]*vol[i]/area # [A/m2]
 
         if csv_flag: create_csv_output(x, Ia_avg, Ia_min, Ia_max, Ia_c_down, Ia_c_up, 'Ia')
-        if csv_flag: create_csv_output(x, Ia_A_avg, 'Ia_A')
+        if csv_flag: create_csv_output(x, Ia_A_avg, title='Ia_A')
         if plot1D_flag: plot_with_continuous_error(x, Ia_A_avg, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title='Area-specific current density', save_file=save_file)
         if plot1D_flag: plot_with_continuous_error(x, Ia_avg, Ia_min, Ia_max, Ia_c_down, Ia_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title='Volumetric current density', save_file=save_file)
     
@@ -186,7 +186,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
             thds.append(())
             titles.append('e_con')
             log_scale.append(False)
-            
+
         visualize_mesh(
             mat = mats,
             thd = thds,
@@ -224,7 +224,6 @@ def create_TPB_field_variable_individual(inputs, phi_dense, indices, masks_dict,
 def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_up=None, 
                                x_title='x', y_title='y', title=None, save_file=False, log_type="linear"):
     import plotly.graph_objects as go
-    from modules.file_options import get_directory
 
     x = [x] if type(x) is not list else x 
     y = [y] if type(y) is not list else y
@@ -232,7 +231,6 @@ def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_
     y_max = [y_max] if type(y_max) is not list else y_max
     y_c_down = [y_c_down] if type(y_c_down) is not list else y_c_down
     y_c_up = [y_c_up] if type(y_c_up) is not list else y_c_up
-    dir = get_directory()
 
     fig = go.Figure()
     for i in range(len(y)):
@@ -308,7 +306,7 @@ def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_
     fig.update_yaxes(type=log_type)
     fig.show()
     if save_file:
-        file_dir = dir + f'svg/{title if title is not None else "fig"}.svg'
+        file_dir = f'Binary files/svg/{title if title is not None else "fig"}.svg'
         fig.write_image(file_dir)
 
 def mean_confidence_interval(data, confidence=0.95):
@@ -610,4 +608,4 @@ def create_csv_output(x, y_avg, y_min=None, y_max=None, y_c_down=None, y_c_up=No
                        c_down_title: y_c_down, 
                        c_up_title: y_c_up})
     
-    df.to_csv(title + '.csv', index=False)
+    df.to_csv('Binary files/csv/' + title + '.csv', index=False)
