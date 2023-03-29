@@ -24,10 +24,15 @@ def visualize_residuals(inputs, residuals):
 def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1, save_file=False):
     # visualize the solution
     import numpy as np
-    import pyvista as pv
-    import pandas as pd
-    import plotly.express as px
-    pv.set_plot_theme("document")
+
+    csv_flag = inputs['output_options']['csv_output']
+    plot1D_flag = inputs['output_options']['show_1D_plots']
+    plot3D_flag = inputs['output_options']['show_3D_plots']
+
+    if plot3D_flag:
+        import pyvista as pv
+        pv.set_plot_theme("document")
+        TPB_mesh = pv.PolyData(vertices, lines=lines)
 
     N = [
         inputs['microstructure']['Nx'], 
@@ -51,96 +56,60 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
     dense_eta_act = dense_m['eta_act']
     dense_eta_con = dense_m['eta_con']
 
-
-    # removing the phi points outside the domain for visualization purposes
-    if plots['cH2_3D']:
-        mats.append(dense_cH2)
-        thds.append(())
-        titles.append('cH2')
-        log_scale.append(False)
-
-    if plots['Vel_3D']:
-        mats.append(dense_Vel)
-        thds.append(())
-        titles.append('Vel')
-        log_scale.append(False)
-    
-    if plots['Vio_3D']:
-        mats.append(dense_Vio)
-        thds.append(())
-        titles.append('Vio')
-        log_scale.append(False)
-
-    if plots['Ia_3D']:
-        mats.append(dense_Ia)
-        thds.append(())
-        titles.append('Ia')
-        log_scale.append(True)
-
-    if plots['eta_act_3D']:
-        mats.append(dense_eta_act)
-        thds.append(()) 
-        titles.append('e_act')
-        log_scale.append(False)
-
-    if plots['eta_con_3D']:
-        mats.append(dense_eta_con)
-        thds.append(())
-        titles.append('e_con')
-        log_scale.append(False)
-
-    TPB_mesh = pv.PolyData(vertices, lines=lines)
     x = np.arange(N[0])*dx*1e6
 
-    if plots['cH2_1D']:
-        cH2_lin = np.zeros(N[0])
+    if plots['cH2_1D'] and (plot1D_flag or csv_flag):
+        cH2_avg = np.zeros(N[0])
         cH2_max = np.zeros(N[0])
         cH2_min = np.zeros(N[0])
         cH2_c_down = np.zeros(N[0])
         cH2_c_up = np.zeros(N[0])
         for i in range(N[0]):
             a = dense_cH2[i, :, :][~np.isnan(dense_cH2[i, :, :])]
-            cH2_lin[i] = np.average(a)
+            cH2_avg[i] = np.average(a)
             cH2_max[i] = np.max(a)
             cH2_min[i] = np.min(a)
             cH2_c_down[i], cH2_c_up[i] = mean_confidence_interval(a)
-        plot_with_continuous_error(x, cH2_lin, cH2_c_down, cH2_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title='Hydrogen concentration', save_file=save_file)
+        if csv_flag: create_csv_output(x, cH2_avg, cH2_min, cH2_max, cH2_c_down, cH2_c_up, 'cH2')
+        if plot1D_flag: plot_with_continuous_error(x, cH2_avg, cH2_c_down, cH2_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title='Hydrogen concentration', save_file=save_file)
     
-    if plots['Vel_1D']:
-        Vel_lin = np.zeros(N[0])
+    if plots['Vel_1D'] and (plot1D_flag or csv_flag):
+        Vel_avg = np.zeros(N[0])
         Vel_max = np.zeros(N[0])
         Vel_min = np.zeros(N[0])
         Vel_c_down = np.zeros(N[0])
         Vel_c_up = np.zeros(N[0])
         for i in range(N[0]):
             a = dense_Vel[i, :, :][~np.isnan(dense_Vel[i, :, :])]
-            Vel_lin[i] = np.average(a)
+            Vel_avg[i] = np.average(a)
             Vel_max[i] = np.max(a)
             Vel_min[i] = np.min(a)
             Vel_c_down[i], Vel_c_up[i] = mean_confidence_interval(a)
-        plot_with_continuous_error(x, Vel_lin, Vel_c_down, Vel_c_up, x_title='Distance from anode (µm)', y_title='Electron potential (V)', title='Electron potential', save_file=save_file)
+        if csv_flag: create_csv_output(x, Vel_avg, Vel_min, Vel_max, Vel_c_down, Vel_c_up, 'Vel')
+        if plot1D_flag: plot_with_continuous_error(x, Vel_avg, Vel_c_down, Vel_c_up, x_title='Distance from anode (µm)', y_title='Electron potential (V)', title='Electron potential', save_file=save_file)
 
-    if plots['Vio_1D']:
-        Vio_lin = np.zeros(N[0])
+    if plots['Vio_1D'] and (plot1D_flag or csv_flag):
+        Vio_avg = np.zeros(N[0])
         Vio_max = np.zeros(N[0])
         Vio_min = np.zeros(N[0])
         Vio_c_down = np.zeros(N[0])
         Vio_c_up = np.zeros(N[0]) 
         for i in range(N[0]):
             a = dense_Vio[i, :, :][~np.isnan(dense_Vio[i, :, :])]
-            Vio_lin[i] = np.average(a)
+            Vio_avg[i] = np.average(a)
             Vio_max[i] = np.max(a)
             Vio_min[i] = np.min(a)
             Vio_c_down[i], Vio_c_up[i] = mean_confidence_interval(a)
-        plot_with_continuous_error(x, Vio_lin, Vio_min, Vio_max, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Ion potential (V)', title='Ion potential', save_file=save_file)
+        if csv_flag: create_csv_output(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, 'Vio')
+        if plot1D_flag: plot_with_continuous_error(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Ion potential (V)', title='Ion potential', save_file=save_file)
 
-    if plots['Ia_1D']:
-        Ia_lin = np.zeros(N[0])
+    if plots['Ia_1D'] and (plot1D_flag or csv_flag):
+        Ia_avg = np.zeros(N[0])
         Ia_max = np.zeros(N[0])
         Ia_min = np.zeros(N[0])
         Ia_c_down = np.zeros(N[0])
         Ia_c_up = np.zeros(N[0])
-        Ia_A_lin = np.zeros(N[0])
+        Ia_A_avg = np.zeros(N[0])
         Ia_A_max = np.zeros(N[0])
         Ia_A_min = np.zeros(N[0])
         Ia_A_c_down = np.zeros(N[0])
@@ -150,24 +119,24 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
         area = N[1]*N[2]*dx**2 # [m2]
         for i in range(N[0]):
             if i == 0 or i == N[0]-1:
-                Ia_lin[i] = np.nan
+                Ia_avg[i] = np.nan
                 Ia_max[i] = np.nan
                 Ia_min[i] = np.nan
                 Ia_c_down[i], Ia_c_up[i] = np.nan, np.nan
-                Ia_A_lin[i] = np.nan
+                Ia_A_avg[i] = np.nan
                 Ia_A_max[i] = np.nan
                 Ia_A_min[i] = np.nan
                 Ia_A_c_down[i], Ia_A_c_up[i] = np.nan, np.nan
                 vol[i] = np.nan
             else:
                 a = dense_Ia[i, :, :][~np.isnan(dense_Ia[i, :, :])]
-                Ia_lin[i]  = np.average(a)
+                Ia_avg[i]  = np.average(a)
                 Ia_max[i]  = np.max(a)
                 Ia_min[i]  = np.min(a)
                 Ia_c_down[i], Ia_c_up[i] = mean_confidence_interval(a)
                 
                 vol[i] = vol_fac*len(a)*dx**3 # [m3]
-                Ia_A_lin[i] = Ia_lin[i]*vol[i]/area # [A/m2] 
+                Ia_A_avg[i] = Ia_avg[i]*vol[i]/area # [A/m2] 
                 # minimum and maximum value for area-specific current density in each slice 
                 # does not have any physical meaning
                 # Ia_A_max[i] = Ia_max[i]*vol[i]/area # [A/m2]
@@ -175,11 +144,49 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
                 # Ia_A_c_down[i] = Ia_c_down[i]*vol[i]/area # [A/m2]
                 # Ia_A_c_up[i] = Ia_c_up[i]*vol[i]/area # [A/m2]
 
-        plot_with_continuous_error(x, Ia_A_lin, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title='Area-specific current density', save_file=save_file)
-        plot_with_continuous_error(x, Ia_lin, Ia_min, Ia_max, Ia_c_down, Ia_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title='Volumetric current density', save_file=save_file)
+        if csv_flag: create_csv_output(x, Ia_avg, Ia_min, Ia_max, Ia_c_down, Ia_c_up, 'Ia')
+        if csv_flag: create_csv_output(x, Ia_A_avg, 'Ia_A')
+        if plot1D_flag: plot_with_continuous_error(x, Ia_A_avg, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title='Area-specific current density', save_file=save_file)
+        if plot1D_flag: plot_with_continuous_error(x, Ia_avg, Ia_min, Ia_max, Ia_c_down, Ia_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title='Volumetric current density', save_file=save_file)
     
 
     if inputs['output_options']['show_3D_plots']:
+        if plots['cH2_3D'] and plot3D_flag:
+            mats.append(dense_cH2)
+            thds.append(())
+            titles.append('cH2')
+            log_scale.append(False)
+
+        if plots['Vel_3D'] and plot3D_flag:
+            mats.append(dense_Vel)
+            thds.append(())
+            titles.append('Vel')
+            log_scale.append(False)
+        
+        if plots['Vio_3D'] and plot3D_flag:
+            mats.append(dense_Vio)
+            thds.append(())
+            titles.append('Vio')
+            log_scale.append(False)
+
+        if plots['Ia_3D'] and plot3D_flag:
+            mats.append(dense_Ia)
+            thds.append(())
+            titles.append('Ia')
+            log_scale.append(True)
+
+        if plots['eta_act_3D']and plot3D_flag:
+            mats.append(dense_eta_act)
+            thds.append(()) 
+            titles.append('e_act')
+            log_scale.append(False)
+
+        if plots['eta_con_3D'] and plot3D_flag:
+            mats.append(dense_eta_con)
+            thds.append(())
+            titles.append('e_con')
+            log_scale.append(False)
+            
         visualize_mesh(
             mat = mats,
             thd = thds,
@@ -586,3 +593,21 @@ def create_dense_matrices(phi, inputs, masks_dict, indices, field_functions):
         'eta_con': eta_conc_mat
         }
     return dense_m
+
+def create_csv_output(x, y_avg, y_min=None, y_max=None, y_c_down=None, y_c_up=None, title='y'):
+    import pandas as pd
+
+    avg_title = title + '_avg'
+    min_title = title + '_min'
+    max_title = title + '_max'
+    c_down_title = title + '_c_down'
+    c_up_title = title + '_c_up'
+
+    df = pd.DataFrame({'x': x, 
+                       avg_title: y_avg, 
+                       min_title: y_min, 
+                       max_title: y_max, 
+                       c_down_title: y_c_down, 
+                       c_up_title: y_c_up})
+    
+    df.to_csv(title + '.csv', index=False)
