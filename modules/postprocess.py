@@ -306,7 +306,9 @@ def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_
     fig.update_yaxes(type=log_type)
     fig.show()
     if save_img:
-        file_dir = f'Binary files/1D plots/graphs/{title if title is not None else "fig"}.html'
+        dir = 'Binary files/1D plots/graphs/'
+        create_directory(dir)
+        file_dir = dir + f'{title if title is not None else "fig"}.html'
         fig.write_html(file_dir)
 
 def mean_confidence_interval(data, confidence=0.95):
@@ -594,6 +596,7 @@ def create_dense_matrices(phi, inputs, masks_dict, indices, field_functions):
 
 def create_csv_output(x, y_avg, y_min=None, y_max=None, y_c_down=None, y_c_up=None, title='y'):
     import pandas as pd
+    import os
 
     avg_title = title + '_avg'
     min_title = title + '_min'
@@ -608,4 +611,11 @@ def create_csv_output(x, y_avg, y_min=None, y_max=None, y_c_down=None, y_c_up=No
                        c_down_title: y_c_down, 
                        c_up_title: y_c_up})
     
-    df.to_csv('Binary files/1D plots/csv/' + title + '.csv', index=False)
+    dir = 'Binary files/1D plots/csv/'
+    create_directory(dir)
+    df.to_csv(dir + title + '.csv', index=False)
+
+def create_directory(dir):
+    import os
+    if not os.path.exists(dir):
+        os.makedirs(dir)
