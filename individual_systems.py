@@ -81,7 +81,10 @@ if __name__ == '__main__':
     phi[2] = phi[2] + scale_ion
     dense_m = post.create_dense_matrices(phi, inputs, masks_dict, indices, field_functions)
 
-    if inputs['output_options']['show_3D_plots'] or inputs['output_options']['show_1D_plots']:
+    if (inputs['output_options']['show_3D_plots'] or 
+        inputs['output_options']['show_1D_plots'] or 
+        inputs['output_options']['csv_output']):
+        
         post.visualize_3D_matrix(
             inputs, dense_m, masks_dict, TPB_dict,
             plots = {
