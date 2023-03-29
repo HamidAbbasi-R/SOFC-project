@@ -67,18 +67,18 @@ def load_case_data_individual(case_name, data_name):
     print('Done!')
     return inputs, indices, J, rhs, field_functions, ds, sum_nb, TPB_dict, bc_dict, phi, residuals
 
-def get_directory():
-    import os
+# def get_directory():
+#     import os
     
-    username = os.getlogin()
-    if username=='x67637ha' or username=='ASUS': # my own laptop or the university laptop
-        directory = 'C:/Users/' + username + '/OneDrive - The University of Manchester/SOFC/Micromodel/Binary files/'
-    elif username=='Hamid': # server computer
-        directory = 'D:/Share/Hamid Abbasi/Micromodel/Binary files/'
-    else:
-        raise ValueError('Username not recognised')
+#     username = os.getlogin()
+#     if username=='x67637ha' or username=='ASUS': # my own laptop or the university laptop
+#         directory = 'C:/Users/' + username + '/OneDrive - The University of Manchester/SOFC/Micromodel/Binary files/'
+#     elif username=='Hamid': # server computer
+#         directory = 'D:/Share/Hamid Abbasi/Micromodel/Binary files/'
+#     else:
+#         raise ValueError('Username not recognised')
     
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+#     if not os.path.exists(directory):
+#         os.makedirs(directory)
 
-    return directory 
+#     return directory 
