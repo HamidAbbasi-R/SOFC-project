@@ -1,0 +1,8 @@
+#!/bin/bash --login
+#$ -cwd
+
+# Load module inside jobscript
+module load apps/binapps/anaconda3/2021.11
+
+# The actual job
+python individual_systems.py
