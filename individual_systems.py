@@ -38,7 +38,7 @@ if __name__ == '__main__':
         masks_dict, indices =prep.get_indices_all(inputs, domain, TPB_dict)
         J, rhs, sum_nb = prep.create_SOLE_individual(inputs, bc_dict, indices, masks_dict)
         if file_options['save_case']:
-            fop.save_case_individual(file_options['case_id'],
+            fop.save_case_individual(f'case_{file_options["id"]}',
                 inputs, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict)
         phi, residuals = prep.initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict, inputs['is_multiple_instances'], inputs['M_instances'], inputs['scaling_factor'])
 
@@ -50,12 +50,12 @@ if __name__ == '__main__':
             field_functions, _, bc_dict = prep.sourcefunc_calc(inputs, TPB_dict)
             J, rhs, sum_nb = prep.create_SOLE_individual(inputs, bc_dict, indices, masks_dict)
             if inputs['file_options']['save_case']:
-                fop.save_case_individual(file_options['case_id'],
+                fop.save_case_individual(f'case_{file_options["id"]}',
                     inputs, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict)
         phi, residuals = prep.initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict, inputs['is_multiple_instances'], inputs['M_instances'], inputs['scaling_factor'])
 
     elif file_options['load_case_data']:
-        inputs_old, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict, phi, residuals = fop.load_case_data_individual(file_options['case_id'], file_options['data_id'])
+        inputs_old, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict, phi, residuals = fop.load_case_data_individual(f'case_{file_options["id"]}', f'data_{file_options["id"]}')
         if inputs['microstructure'] != inputs_old['microstructure']: 
             raise Exception('Microstructure does not match!')
         if (inputs['boundary_conditions'] != inputs_old['boundary_conditions'] or 
@@ -63,13 +63,13 @@ if __name__ == '__main__':
             field_functions, _, bc_dict = prep.sourcefunc_calc(inputs, TPB_dict)
             J, rhs, sum_nb = prep.create_SOLE_individual(inputs, bc_dict, indices, masks_dict)
             if inputs['file_options']['save_case']:
-                fop.save_case_individual(file_options['case_id'],
+                fop.save_case_individual(f'case_{file_options["id"]}',
                     inputs, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict)
 
 
     phi, residuals = slv.Newton_loop_individual(inputs, J, rhs, phi, indices, field_functions, masks_dict, sum_nb, residuals)
     if file_options['save_data']:
-        fop.save_data(file_options['data_id'], phi, residuals)
+        fop.save_data(f'data_{file_options["id"]}', phi, residuals)
 
 
     if inputs['output_options']['show_residuals']:

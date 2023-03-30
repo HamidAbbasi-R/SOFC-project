@@ -19,13 +19,11 @@ def load_case_individual(case_name):
     from dill import load
     from scipy.sparse import load_npz
     import warnings
-    from modules.postprocess import create_directory
     
     print('Loading case file...', end='')
     with warnings.catch_warnings(): 
         warnings.simplefilter("ignore")
         dir = 'Binary files/case_data/'
-        create_directory(dir)
         with open(dir + case_name + '.pkl', 'rb') as file:
             inputs, indices, rhs, field_functions, ds, sum_nb, TPB_dict, bc_dict = load(file)
     
@@ -33,7 +31,7 @@ def load_case_individual(case_name):
     for p in [0,1,2]:
         if inputs['solver_options']['ion_only'] and p!=2:
             continue
-        J[p] = load_npz(dir + case_name + f'_sparse_{p}.npz').tolil()
+        J[p] = load_npz(dir + 'case' + inputs['file_options']['id'] + f'_sparse_{p}.npz').tolil()
 
     print('Done!')
     return inputs, indices, J, rhs, field_functions, ds, sum_nb, TPB_dict, bc_dict
@@ -69,13 +67,11 @@ def save_case_individual(case_name,
 def load_case_data_individual(case_name, data_name):
     # load the case
     from dill import load
-    from modules.postprocess import create_directory
 
     inputs, indices, J, rhs, field_functions, ds, sum_nb, TPB_dict, bc_dict = load_case_individual(case_name)
     # load the data
     print('Loading data file...', end='')
     dir = 'Binary files/case_data/'
-    create_directory(dir)
     with open(dir + data_name + '.pkl', 'rb') as data_file:
         phi, residuals = load(data_file)
     print('Done!')

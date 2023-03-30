@@ -1,13 +1,12 @@
 {
     "file_options": 
     {
-        "new_case":         false,
-        "load_case":        true,
+        "new_case":         true,
+        "load_case":        false,
         "load_case_data":   false,
-        "save_case":        true,
-        "save_data":        true,
-        "case_id": "case_test",
-        "data_id": "data_test"
+        "save_case":        false,
+        "save_data":        false,
+        "id": "1"
     },
 
 
@@ -15,7 +14,7 @@
     {
         "reduced_geometry": false,
         "Nx_extended": 800,
-        "Nx": 400,
+        "Nx": 50,
         "Ny": 50,
         "Nz": 50,
         "sig_gen": 3,
@@ -25,14 +24,15 @@
             "Ni": 0.253,
             "YSZ": 0.251
         },
-        "dx": 50e-09
+        "dx": 50e-09,
+        "vol_fac": 12
     },
 
     "boundary_conditions": 
     {
         "pH2_inlet": 0.97,
         "pH2_b": 0.97,
-        "Vel_b": 0.05,
+        "Vel_b": 0.03,
         "Vio_b": 0.0
     },
     
@@ -46,7 +46,7 @@
     "solver_options": 
     {
         "ion_only": true,
-        "max_iter_non": 50,
+        "max_iter_non": 10,
         "max_iter_lin": 20,
         "tol": 1e-4,
         "uf": {
@@ -59,9 +59,10 @@
     
     "output_options": 
     {        
-        "show_residuals": true,
+        "show_residuals": false,
         "show_3D_plots": false,
-        "show_1D_plots": true
+        "show_1D_plots": true,
+        "csv_output": true
     },
 
 
