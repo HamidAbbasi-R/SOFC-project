@@ -31,6 +31,8 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
 
     if plot3D_flag:
         import pyvista as pv
+        vertices = TPB_dict['vertices']
+        lines = TPB_dict['lines']
         pv.set_plot_theme("document")
         TPB_mesh = pv.PolyData(vertices, lines=lines)
 
@@ -41,8 +43,6 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
     
     dx = inputs['microstructure']['dx']
     ds = masks_dict['ds']
-    vertices = TPB_dict['vertices']
-    lines = TPB_dict['lines']
     mats = []
     thds = []
     log_scale = []
