@@ -1,4 +1,4 @@
-from modules.topology import create_idealized_microstructure as cim
+from modules.topology import create_ideal_microstructure_spheres as cim
 
 analytical = []
 numerical = []
