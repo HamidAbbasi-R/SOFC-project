@@ -3,14 +3,14 @@ from modules import topology as tpl
 import numpy as np
 
 N = [    # Number of voxels in each direction
-    400,
+    200,
     100,
     100,
     ]
 
-sigma_gen = 3   # Generation parameter
-sigma_seg = 3   # Segregation parameter
-dx = 50e-9      # Voxel size [m]
+sigma_gen = 4   # Generation parameter
+sigma_seg = 3.5   # Segregation parameter
+dx = 37.5e-9      # Voxel size [m]
 
 phase_mat = tpl.create_phase_data(
     voxels = N,
