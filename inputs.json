@@ -6,33 +6,34 @@
         "load_case_data":   false,
         "save_case":        false,
         "save_data":        false,
-        "id": "2"
+        "id": "test_ideal_50"
     },
 
 
     "microstructure": 
     {
+        "ideal_geometry": true,
         "reduced_geometry": false,
-        "Nx_extended": 800,
-        "Nx": 50,
-        "Ny": 50,
-        "Nz": 50,
-        "sig_gen": 3,
-        "seed": [20,12],
+        "Nx_extended": 100,
+        "Nx": 10,
+        "Ny": 10,
+        "Nz": 10,
+        "sig_gen": 6,
+        "seed": [30,20],
         "volume_fractions": {
-            "pores": 0.496,
-            "Ni": 0.253,
-            "YSZ": 0.251
+            "pores": 0.33,
+            "Ni": 0.33,
+            "YSZ": 0.33
         },
-        "dx": 50e-09,
-        "vol_fac": 12
+        "dx": 25e-09,
+        "vol_fac": 1
     },
 
     "boundary_conditions": 
     {
         "pH2_inlet": 0.97,
         "pH2_b": 0.97,
-        "Vel_b": 0.03,
+        "Vel_b": 0.05,
         "Vio_b": 0.0
     },
     
@@ -46,9 +47,9 @@
     "solver_options": 
     {
         "ion_only": true,
-        "max_iter_non": 10,
+        "max_iter_non": 100,
         "max_iter_lin": 20,
-        "tol": 1e-4,
+        "tol": 1e-5,
         "uf": {
             "cH2": 0.9,
             "Vel": 0.9,
@@ -60,7 +61,7 @@
     "output_options": 
     {        
         "show_residuals": false,
-        "show_3D_plots": false,
+        "show_3D_plots": true,
         "show_1D_plots": true,
         "csv_output": true
     },
