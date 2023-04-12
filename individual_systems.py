@@ -101,7 +101,6 @@ if __name__ == '__main__':
                 'eta_act_3D':   False,
                 'eta_con_3D':   False,
             },
-            vol_fac=inputs['microstructure']['vol_fac'],
             save_img=True)
         
     end = time.time()
