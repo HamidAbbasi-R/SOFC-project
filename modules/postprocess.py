@@ -21,7 +21,7 @@ def visualize_residuals(inputs, residuals):
     fig.update_yaxes(exponentformat="e")
     fig.show()
 
-def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1, save_img=False):
+def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_img=False):
     # visualize the solution
     import numpy as np
 
@@ -104,64 +104,48 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, vol_fac=1,
         if plot1D_flag: plot_with_continuous_error(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Ion potential (V)', title=f'Vio_{inputs["file_options"]["id"]}', save_img=save_img)
 
     if plots['Ia_1D'] and (plot1D_flag or csv_flag):
-        Ia_V_avg = np.zeros(N[0])
-        Ia_V_max = np.zeros(N[0])
-        Ia_V_min = np.zeros(N[0])
-        Ia_V_c_down = np.zeros(N[0])
-        Ia_V_c_up = np.zeros(N[0])
+        # Ia_V_avg = np.zeros(N[0])
+        # Ia_V_max = np.zeros(N[0])
+        # Ia_V_min = np.zeros(N[0])
+        # Ia_V_c_down = np.zeros(N[0])
+        # Ia_V_c_up = np.zeros(N[0])
 
         Ia_A_avg = np.zeros(N[0])
-        Ia_A_max = np.zeros(N[0])
-        Ia_A_min = np.zeros(N[0])
-        Ia_A_c_down = np.zeros(N[0])
-        Ia_A_c_up = np.zeros(N[0])
-
-        Ia = np.zeros(N[0])
 
         j_buch = 0         # area specific current density as defined in eq 21 by Buchaniec et al. 2019 [A/m2]
+        j_prok = 0         # area specific current density as defined in eq 3.31 in Prokop's thesis 2020 [A/m2]
 
-        vol = np.zeros(N[0])
         area = N[1]*N[2]*dx**2 # [m2]
         for i in range(N[0]):
             if i == 0 or i == N[0]-1:
-                Ia[i] = np.nan
-                Ia_V_avg[i] = np.nan
-                Ia_V_max[i] = np.nan
-                Ia_V_min[i] = np.nan
-                Ia_V_c_down[i], Ia_V_c_up[i] = np.nan, np.nan
+                # Ia[i] = np.nan
+                # Ia_V_avg[i] = np.nan
+                # Ia_V_max[i] = np.nan
+                # Ia_V_min[i] = np.nan
+                # Ia_V_c_down[i], Ia_V_c_up[i] = np.nan, np.nan
+
                 Ia_A_avg[i] = np.nan
-                Ia_A_max[i] = np.nan
-                Ia_A_min[i] = np.nan
-                Ia_A_c_down[i], Ia_A_c_up[i] = np.nan, np.nan
-                vol[i] = np.nan
             else:
                 a = dense_Ia[i, :, :][~np.isnan(dense_Ia[i, :, :])]     # [A/m3]
 
-                j_buch = j_buch + dx*(np.sum(a))
-                Ia[i] = np.average(a)*len(a)*dx**3  # [A]
+                j_buch = j_buch + (np.sum(a))*dx
+                j_prok = j_prok + (np.sum(a))*dx**3
 
-                Ia_V_avg[i]  = np.average(a)
-                Ia_V_max[i]  = np.max(a)
-                Ia_V_min[i]  = np.min(a)
-                Ia_V_c_down[i], Ia_V_c_up[i] = mean_confidence_interval(a)
+                # Ia[i] = np.average(a)*len(a)*dx**3  # [A]
+
+                # Ia_V_avg[i]  = np.average(a)
+                # Ia_V_max[i]  = np.max(a)
+                # Ia_V_min[i]  = np.min(a)
+                # Ia_V_c_down[i], Ia_V_c_up[i] = mean_confidence_interval(a)
                 
-                vol[i] = vol_fac*len(a)*dx**3 # [m3]
-                Ia_A_avg[i] = Ia_V_avg[i]*vol[i]/area # [A/m2] 
-                # minimum and maximum value for area-specific current density in each slice 
-                # does not have any physical meaning
-                # Ia_A_max[i] = Ia_max[i]*vol[i]/area # [A/m2]
-                # Ia_A_min[i] = Ia_min[i]*vol[i]/area # [A/m2]
-                # Ia_A_c_down[i] = Ia_c_down[i]*vol[i]/area # [A/m2]
-                # Ia_A_c_up[i] = Ia_c_up[i]*vol[i]/area # [A/m2]
+                Ia_A_avg[i] = j_prok/area # [A/m2]
 
-        if csv_flag: create_csv_output(x, Ia, title=f'Ia_{inputs["file_options"]["id"]}')
-        if csv_flag: create_csv_output(x, Ia_V_avg, Ia_V_min, Ia_V_max, Ia_V_c_down, Ia_V_c_up, f'Ia_V_{inputs["file_options"]["id"]}')
+        # if csv_flag: create_csv_output(x, Ia, title=f'Ia_{inputs["file_options"]["id"]}')
+        # if csv_flag: create_csv_output(x, Ia_V_avg, Ia_V_min, Ia_V_max, Ia_V_c_down, Ia_V_c_up, f'Ia_V_{inputs["file_options"]["id"]}')
         if csv_flag: create_csv_output(x, Ia_A_avg, title=f'Ia_A_{inputs["file_options"]["id"]}')
-        if plot1D_flag: plot_with_continuous_error(x, Ia, x_title='Distance from anode (µm)', y_title='Current (A)', title=f'Ia_{inputs["file_options"]["id"]}', save_img=save_img)
+        # if plot1D_flag: plot_with_continuous_error(x, Ia, x_title='Distance from anode (µm)', y_title='Current (A)', title=f'Ia_{inputs["file_options"]["id"]}', save_img=save_img)
         if plot1D_flag: plot_with_continuous_error(x, Ia_A_avg, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title=f'Ia_A_{inputs["file_options"]["id"]}', save_img=save_img)
-        if plot1D_flag: plot_with_continuous_error(x, Ia_V_avg, Ia_V_min, Ia_V_max, Ia_V_c_down, Ia_V_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title=f'Ia_V_{inputs["file_options"]["id"]}', save_img=save_img)
-        # print j buchaniec to two decimal points:
-        print(f'j buchaniec = {j_buch:.2e} A/m2')
+        # if plot1D_flag: plot_with_continuous_error(x, Ia_V_avg, Ia_V_min, Ia_V_max, Ia_V_c_down, Ia_V_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title=f'Ia_V_{inputs["file_options"]["id"]}', save_img=save_img)
 
     if inputs['output_options']['show_3D_plots']:
         if plots['cH2_3D'] and plot3D_flag:

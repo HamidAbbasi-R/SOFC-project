@@ -4,29 +4,28 @@
         "new_case":         true,
         "load_case":        false,
         "load_case_data":   false,
-        "save_case":        false,
-        "save_data":        false,
-        "id": "test_ideal_50"
+        "save_case":        true,
+        "save_data":        true,
+        "id": "Nx200_dx50_V05"
     },
 
 
     "microstructure": 
     {
-        "ideal_geometry": true,
+        "ideal_geometry": false,
         "reduced_geometry": false,
         "Nx_extended": 100,
-        "Nx": 10,
-        "Ny": 10,
-        "Nz": 10,
-        "sig_gen": 6,
+        "Nx": 200,
+        "Ny": 50,
+        "Nz": 50,
+        "sig_gen": 3,
         "seed": [30,20],
         "volume_fractions": {
-            "pores": 0.33,
-            "Ni": 0.33,
-            "YSZ": 0.33
+            "pores": 0.5,
+            "Ni": 0.25,
+            "YSZ": 0.25
         },
-        "dx": 25e-09,
-        "vol_fac": 1
+        "dx": 50e-09
     },
 
     "boundary_conditions": 

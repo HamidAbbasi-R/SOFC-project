@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     if file_options['new_case']:
         domain = tpl.create_microstructure(inputs, display=False)
-        domain, TPB_dict = tpl.topological_operations(inputs, domain, show_TPB=False)
+        domain, TPB_dict = tpl.topological_operations(inputs, domain, show_TPB=True)
         field_functions, _, bc_dict = prep.sourcefunc_calc(inputs, TPB_dict)
         masks_dict, indices =prep.get_indices_all(inputs, domain, TPB_dict)
         J, rhs, sum_nb = prep.create_SOLE_individual(inputs, bc_dict, indices, masks_dict)
