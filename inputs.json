@@ -60,8 +60,8 @@
     "output_options": 
     {        
         "show_residuals": false,
-        "show_3D_plots": true,
-        "show_1D_plots": true,
+        "show_3D_plots": false,
+        "show_1D_plots": false,
         "csv_output": true
     },
 
