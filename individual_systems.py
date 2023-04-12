@@ -32,8 +32,8 @@ if __name__ == '__main__':
     inputs['boundary_conditions']['Vio_b'] = 0
 
     if file_options['new_case']:
-        domain = tpl.create_microstructure(inputs)
-        domain, TPB_dict = tpl.topological_operations(inputs, domain)
+        domain = tpl.create_microstructure(inputs, display=False)
+        domain, TPB_dict = tpl.topological_operations(inputs, domain, show_TPB=False)
         field_functions, _, bc_dict = prep.sourcefunc_calc(inputs, TPB_dict)
         masks_dict, indices =prep.get_indices_all(inputs, domain, TPB_dict)
         J, rhs, sum_nb = prep.create_SOLE_individual(inputs, bc_dict, indices, masks_dict)
@@ -90,14 +90,14 @@ if __name__ == '__main__':
             plots = {
                 'cH2_1D':       False,
                 'Vel_1D':       False,
-                'Vio_1D':       True,
+                'Vio_1D':       False,
                 'Ia_1D':        True,
                 'eta_act_1D':   False,
                 'eta_con_1D':   False,
                 'cH2_3D':       False,
                 'Vel_3D':       False,
                 'Vio_3D':       False,
-                'Ia_3D':        False,
+                'Ia_3D':        True,
                 'eta_act_3D':   False,
                 'eta_con_3D':   False,
             },
