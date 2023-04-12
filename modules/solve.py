@@ -158,14 +158,17 @@ def error_monitoring_individual(inputs, phi, phi_new, J_scl, rhs_scl, residuals,
     res = [None]*len(phi)
     for p in range(len(phi)):
         if inputs['solver_options']['ion_only'] and p != 2:
-            residuals[p] = 10       # arbitrary large number
+            residuals[p] = residuals[p] + [10]       # arbitrary large number
             continue
         # res[p] = rhs_scl[p] - J_scl[p].tocsr()@phi_new[p]    # first method
         res[p] = np.abs(phi_new[p] - phi[p])                 # second method
         residuals[p] = residuals[p] + [np.linalg.norm(res[p])/np.linalg.norm(phi_new[p])]
 
     if len(phi) == 3:
-        max_res = max(residuals[0][iter], residuals[1][iter], residuals[2][iter])
+        if inputs['solver_options']['ion_only']:
+            max_res = residuals[2][iter]
+        else:
+            max_res = max(residuals[0][iter], residuals[1][iter], residuals[2][iter])
     elif len(phi) == 5:
         max_res = max(residuals[0][iter], residuals[1][iter], residuals[2][iter], residuals[3][iter], residuals[4][iter])
     
