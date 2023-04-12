@@ -650,8 +650,12 @@ def remove_edges(phi):
 
     return phi
     
-def create_microstructure(inputs):
+def create_microstructure(inputs, display=False):
     # create the entire domain
+    if inputs['microstructure']['ideal_geometry']:
+        domain = create_ideal_microstructre(inputs, display)
+        return domain
+    
     if inputs['microstructure']['reduced_geometry']:
         if inputs['microstructure']['Nx_extended'] < inputs['microstructure']['Nx']:
             raise ValueError('Nx_extended must be larger than Nx')
@@ -672,7 +676,7 @@ def create_microstructure(inputs):
         vol_frac = vol_frac,
         sigma = inputs['microstructure']['sig_gen'],
         seed = inputs['microstructure']['seed'],
-        display = False,
+        display = display,
         )
     
     if inputs['microstructure']['reduced_geometry']:
@@ -761,7 +765,7 @@ def topological_operations_entire_cell(inputs, domain):
         
     return domain, TPB_dict
 
-def create_idealized_microstructure(voxels, TPB_radius):
+def create_ideal_microstructure_spheres(voxels, TPB_radius):
     # This function creates an idealized microstructure with two spheres in one
     # third and two thirds of the domain. The TPB length can then be calculated 
     # analytically. This is useful for testing the TPB length calculation.
@@ -795,3 +799,20 @@ def create_idealized_microstructure(voxels, TPB_radius):
     vm([domain], [(1,1)], TPB_mesh=TPB_mesh)
 
     return TPB_analytical, TPB_measured
+
+def create_ideal_microstructre(inputs, display=False):
+    import numpy as np
+    Nx = inputs['microstructure']['Nx']
+    Ny = inputs['microstructure']['Ny']
+    Nz = inputs['microstructure']['Nz']
+    N = [Nx, Ny, Nz]
+
+    domain = np.ones(shape = N, dtype=int)
+    domain[: , :int(Ny/2) , :int(Nz/2)] = 2
+    domain[: , int(Ny/2): , :int(Nz/2)] = 3
+
+    if display:
+        from modules.postprocess import visualize_mesh as vm 
+        vm([domain],[()])
+    
+    return domain
