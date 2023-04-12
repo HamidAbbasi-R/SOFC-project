@@ -58,7 +58,7 @@ def sourcefunc_calc(inputs, TPB_dict):
     # current density is not clear. Two possible conversion factors can be used. 
     # Is the conversion factor correct?
     # conversion factor 1 > 2 > 3
-    conversion_fac_1 = dx / dx**3       # [m/m3]
+    conversion_fac_1 = dx / (dx**3)        # [m/m3]
     conversion_fac_2 = TPB_dict['TPB_density']      # [m/m3]
     conversion_fac_3 = 5e12      # [m/m3] typical TPB density reported in Prokop PhD thesis
     I0a = I0a_l*conversion_fac_1      # volumetric Exchange current density, anode [A/m^3]
@@ -86,9 +86,9 @@ def sourcefunc_calc(inputs, TPB_dict):
 
     # initialize the source function list
     source_func = [None]*3         # initialization
-    source_func[0] = simplify(-Ia/n/F*MH2) if inputs['solver_options']['ion_only'] is False else None # mass [kg/m3/s]
-    source_func[1] = simplify(-Ia) if inputs['solver_options']['ion_only'] is False else None            # electron [A/m3]
-    source_func[2] = simplify(Ia)           # ion [A/m3]
+    source_func[0] = simplify(-Ia/n/F*MH2/4) if inputs['solver_options']['ion_only'] is False else None # mass [kg/m3/s]
+    source_func[1] = simplify(-Ia/4) if inputs['solver_options']['ion_only'] is False else None            # electron [A/m3]
+    source_func[2] = simplify(Ia/4)           # ion [A/m3]
     expected_sign = [-1,-1,1]             # expected sign of the source terms
     # source_func[0] = exp(-cH2**2 - Vel**2 - Vio**2)       # test case
     # source_func[1] = exp(-cH2**2 - Vel**2 - Vio**2)       # test case
