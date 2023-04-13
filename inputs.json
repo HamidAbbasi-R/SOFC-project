@@ -4,9 +4,9 @@
         "new_case":         true,
         "load_case":        false,
         "load_case_data":   false,
-        "save_case":        true,
-        "save_data":        true,
-        "id": "Nx200_dx50_V05"
+        "save_case":        false,
+        "save_data":        false,
+        "id": "Nx200_Ny50_dx50_V05"
     },
 
 
@@ -14,7 +14,7 @@
     {
         "ideal_geometry": false,
         "reduced_geometry": false,
-        "Nx_extended": 100,
+        "Nx_extended": 800,
         "Nx": 200,
         "Ny": 50,
         "Nz": 50,
@@ -46,7 +46,7 @@
     "solver_options": 
     {
         "ion_only": true,
-        "max_iter_non": 100,
+        "max_iter_non": 200,
         "max_iter_lin": 20,
         "tol": 1e-5,
         "uf": {
