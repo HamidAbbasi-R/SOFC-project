@@ -18,14 +18,14 @@
         "Nx": 200,
         "Ny": 50,
         "Nz": 50,
-        "sig_gen": 3,
+        "sig_gen": 1.5,
         "seed": [30,20],
         "volume_fractions": {
             "pores": 0.5,
             "Ni": 0.25,
             "YSZ": 0.25
         },
-        "dx": 50e-09
+        "dx": 100e-09
     },
 
     "boundary_conditions": 
@@ -46,7 +46,7 @@
     "solver_options": 
     {
         "ion_only": true,
-        "max_iter_non": 200,
+        "max_iter_non": 300,
         "max_iter_lin": 20,
         "tol": 1e-5,
         "uf": {
