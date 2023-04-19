@@ -6,7 +6,11 @@ import itertools
 
 # Different configurations
 Nx = [
-    600] * 5
+    100,
+    200,
+    300,
+    400,
+    500]
 
 Nyz = [
     100] * len(Nx)
@@ -15,11 +19,7 @@ dx = [
     50] * len(Nx)
 
 V = [
-    0.05,
-    0.04,
-    0.03,
-    0.02,
-    0.01]
+    0.05] * len(Nx)
 
 # Create file names
 parameter = 'Vio'
