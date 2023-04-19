@@ -21,10 +21,11 @@ def visualize_residuals(inputs, residuals):
     fig.update_yaxes(exponentformat="e")
     fig.show()
 
-def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_img=False):
+def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots):
     # visualize the solution
     import numpy as np
 
+    img_flag = inputs['output_options']['img_output']
     csv_flag = inputs['output_options']['csv_output']
     plot1D_flag = inputs['output_options']['show_1D_plots']
     plot3D_flag = inputs['output_options']['show_3D_plots']
@@ -71,7 +72,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_img=F
             cH2_min[i] = np.min(a)
             cH2_c_down[i], cH2_c_up[i] = mean_confidence_interval(a)
         if csv_flag: create_csv_output(x, cH2_avg, cH2_min, cH2_max, cH2_c_down, cH2_c_up, f'cH2_{inputs["file_options"]["id"]}')
-        if plot1D_flag: plot_with_continuous_error(x, cH2_avg, cH2_c_down, cH2_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title=f'cH2_{inputs["file_options"]["id"]}', save_img=save_img)
+        if plot1D_flag: plot_with_continuous_error(x, cH2_avg, cH2_c_down, cH2_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title=f'cH2_{inputs["file_options"]["id"]}', save_img=img_flag)
     
     if plots['Vel_1D'] and (plot1D_flag or csv_flag):
         Vel_avg = np.zeros(N[0])
@@ -86,7 +87,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_img=F
             Vel_min[i] = np.min(a)
             Vel_c_down[i], Vel_c_up[i] = mean_confidence_interval(a)
         if csv_flag: create_csv_output(x, Vel_avg, Vel_min, Vel_max, Vel_c_down, Vel_c_up, f'Vel_{inputs["file_options"]["id"]}')
-        if plot1D_flag: plot_with_continuous_error(x, Vel_avg, Vel_c_down, Vel_c_up, x_title='Distance from anode (µm)', y_title='Electron potential (V)', title=f'Vel_{inputs["file_options"]["id"]}', save_img=save_img)
+        if plot1D_flag: plot_with_continuous_error(x, Vel_avg, Vel_c_down, Vel_c_up, x_title='Distance from anode (µm)', y_title='Electron potential (V)', title=f'Vel_{inputs["file_options"]["id"]}', save_img=img_flag)
 
     if plots['Vio_1D'] and (plot1D_flag or csv_flag):
         Vio_avg = np.zeros(N[0])
@@ -101,7 +102,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_img=F
             Vio_min[i] = np.min(a)
             Vio_c_down[i], Vio_c_up[i] = mean_confidence_interval(a)
         if csv_flag: create_csv_output(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, f'Vio_{inputs["file_options"]["id"]}')
-        if plot1D_flag: plot_with_continuous_error(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Ion potential (V)', title=f'Vio_{inputs["file_options"]["id"]}', save_img=save_img)
+        if plot1D_flag: plot_with_continuous_error(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Ion potential (V)', title=f'Vio_{inputs["file_options"]["id"]}', save_img=img_flag)
 
     if plots['Ia_1D'] and (plot1D_flag or csv_flag):
         # Ia_V_avg = np.zeros(N[0])
@@ -144,7 +145,7 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots, save_img=F
         # if csv_flag: create_csv_output(x, Ia_V_avg, Ia_V_min, Ia_V_max, Ia_V_c_down, Ia_V_c_up, f'Ia_V_{inputs["file_options"]["id"]}')
         if csv_flag: create_csv_output(x, Ia_A_avg, title=f'Ia_A_{inputs["file_options"]["id"]}')
         # if plot1D_flag: plot_with_continuous_error(x, Ia, x_title='Distance from anode (µm)', y_title='Current (A)', title=f'Ia_{inputs["file_options"]["id"]}', save_img=save_img)
-        if plot1D_flag: plot_with_continuous_error(x, Ia_A_avg, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title=f'Ia_A_{inputs["file_options"]["id"]}', save_img=save_img)
+        if plot1D_flag: plot_with_continuous_error(x, Ia_A_avg, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title=f'Ia_A_{inputs["file_options"]["id"]}', save_img=img_flag)
         # if plot1D_flag: plot_with_continuous_error(x, Ia_V_avg, Ia_V_min, Ia_V_max, Ia_V_c_down, Ia_V_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title=f'Ia_V_{inputs["file_options"]["id"]}', save_img=save_img)
 
     if inputs['output_options']['show_3D_plots']:

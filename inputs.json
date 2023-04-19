@@ -62,7 +62,8 @@
         "show_residuals": false,
         "show_3D_plots": false,
         "show_1D_plots": false,
-        "csv_output": true
+        "csv_output": true,
+        "img_output": false
     },
 
 

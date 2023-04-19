@@ -100,8 +100,7 @@ if __name__ == '__main__':
                 'Ia_3D':        False,
                 'eta_act_3D':   False,
                 'eta_con_3D':   False,
-            },
-            save_img=True)
+            })
         
     end = time.time()
     print('Time elapsed: ', end - start)
