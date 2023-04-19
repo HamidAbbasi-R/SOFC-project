@@ -555,7 +555,7 @@ def ISA(phase_mat):
     
     return isa_12_mat, isa_23_mat, isa_31_mat, isa_12, isa_23, isa_31
 
-def image_segmentation(phase_mat,sigma=5):
+def image_segmentation(phase_mat,sigma=5,display=False):
     """ 
     Segmentation of the phase matrix.
     Inputs:
@@ -609,6 +609,10 @@ def image_segmentation(phase_mat,sigma=5):
             centroids[i-1][particle,:] = np.average(x,axis=1)
             volumes[i-1][particle] = len(x[0])
     
+    if display:
+        from modules.postprocess import visualize_mesh as vm
+        vm([labels[:,:,:,0], labels[:,:,:,1], labels[:,:,:,2]], [(), (), ()])
+
     return labels, dist_mat, phase_mat_nans, percolating_labels, volumes, centroids
 
 def remove_thin_boundaries(phase_mat):

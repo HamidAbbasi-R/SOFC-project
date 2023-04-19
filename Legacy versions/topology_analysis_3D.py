@@ -3,14 +3,14 @@ from modules import topology as tpl
 import numpy as np
 
 N = [    # Number of voxels in each direction
-    200,
+    100,
     100,
     100,
     ]
 
-sigma_gen = 4   # Generation parameter
-sigma_seg = 3.5   # Segregation parameter
-dx = 37.5e-9      # Voxel size [m]
+sigma_gen = 1.5   # Generation parameter
+sigma_seg = 2.4   # Segmegation parameter
+dx = 100e-9      # Voxel size [m]
 
 phase_mat = tpl.create_phase_data(
     voxels = N,
@@ -37,7 +37,7 @@ TPB_density = TPB_density / 1e12      # [μm^-2]
 
 # image segmentation 
 labels, dist_mat, phase_mat_nans, percolating_labels, volumes, centroids\
-    = tpl.image_segmentation(phase_mat,sigma_seg)
+    = tpl.image_segmentation(phase_mat,sigma_seg, display=False)
 volumes[0] = volumes[0] * dx**3 * 1e18      # [μm^3]
 volumes[1] = volumes[1] * dx**3 * 1e18      # [μm^3]
 volumes[2] = volumes[2] * dx**3 * 1e18      # [μm^3]
