@@ -1,4 +1,4 @@
-def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], gradient=1 ,periodic=True, display=False, histogram='none'):
+def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], gradient_factor=1 ,periodic=True, display=False, histogram='none'):
     """
     This function creates a periodic three phase 2D phase matrix with the given parameters.
     inputs:
@@ -87,14 +87,13 @@ def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], gradient=
     if mode=="normal":
         if len(vol_frac)==2:    # phsaes: 1-2-3
             phase_mat = np.zeros_like(smooth_mat_1, dtype=int)+3
-            if gradient:
+            if gradient_factor>1:
                 # for gradient three-phase microstructures it is assumed that pore phase has 
                 # a uniform distribution, but volume fraction of Ni and YSZ changes
-                Mg = 3      # Mg is gradient strength
                 vf_p = vol_frac[0]
                 vf_Ni_nom = vol_frac[1]
-                vf_Ni_min = vf_Ni_nom / Mg
-                vf_Ni_max = vf_Ni_nom + vf_Ni_nom / Mg * (Mg - 1)
+                vf_Ni_min = vf_Ni_nom / gradient_factor
+                vf_Ni_max = vf_Ni_nom + vf_Ni_nom / gradient_factor * (gradient_factor - 1)
                 vf_Ni = np.linspace(vf_Ni_min, vf_Ni_max, voxels[0])
                 for i in range(voxels[0]):
                     a = np.quantile(smooth_mat_1[i,:,:].flatten(), q=vf_p)
@@ -108,7 +107,7 @@ def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], gradient=
                 phase_mat[np.logical_and(smooth_mat_2 < b, smooth_mat_1 > a)] = 2
         if len(vol_frac)==1:    # phases: 0-1
             phase_mat = np.zeros_like(smooth_mat_1, dtype=int)
-            if gradient:
+            if gradient_factor:
                 vol_frac = np.linspace(vol_frac[0]/2, (1+vol_frac[0])/2, voxels[0])
                 for i in range(voxels[0]):
                     a = np.quantile(smooth_mat_1[i,:,:].flatten(), q=vol_frac[i])
