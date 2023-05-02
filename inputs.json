@@ -19,15 +19,15 @@
         "Ny": 80,
         "Nz": 80,
         "sig_gen": 3,
+        "infiltration_loading": 0.05,
         "gradient_factor": 1,
-        "seed": [30,20],
         "volume_fractions": {
             "pores": 0.5,
             "Ni": 0.25,
             "YSZ": 0.25
         },
         "dx": 80e-09,
-        "infiltration_loading": 0.05
+        "seed": [30,20]
     },
 
     "boundary_conditions": 
