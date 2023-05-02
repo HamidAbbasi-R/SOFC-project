@@ -6,7 +6,7 @@
         "load_case_data":   false,
         "save_case":        false,
         "save_data":        false,
-        "id": "Nx200_Nyz50_dx50_V05"
+        "id": "test"
     },
 
 
@@ -15,17 +15,18 @@
         "ideal_geometry": false,
         "reduced_geometry": false,
         "Nx_extended": 800,
-        "Nx": 200,
-        "Ny": 50,
-        "Nz": 50,
-        "sig_gen": 1.5,
+        "Nx": 80,
+        "Ny": 80,
+        "Nz": 80,
+        "sig_gen": 3,
         "seed": [30,20],
         "volume_fractions": {
             "pores": 0.5,
             "Ni": 0.25,
             "YSZ": 0.25
         },
-        "dx": 100e-09
+        "dx": 80e-09,
+        "infiltration_loading": 0.05
     },
 
     "boundary_conditions": 
