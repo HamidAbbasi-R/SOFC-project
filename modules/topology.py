@@ -683,6 +683,7 @@ def create_microstructure(inputs, display=False):
         vol_frac = vol_frac,
         sigma = inputs['microstructure']['sig_gen'],
         seed = inputs['microstructure']['seed'],
+        gradient_factor = inputs['microstructure']['gradient_factor'],
         display = display,
         )
     
