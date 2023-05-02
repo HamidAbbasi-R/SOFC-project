@@ -5,25 +5,34 @@ import os
 import itertools
 
 # Different configurations
+folder = 'D42 - 0.68'
+
 Nx = [
-    100,
+    # 100,
+    # 200,
     200,
-    300,
-    400,
-    500]
+    # 500,
+    # 700,
+    # 1000,
+    ]
 
 Nyz = [
-    100] * len(Nx)
+    100,
+    ] * len(Nx)
 
 dx = [
-    50] * len(Nx)
+    90,
+    ] * len(Nx)
 
 V = [
-    0.05] * len(Nx)
+    0.05,
+    ]
 
 # Create file names
-parameter = 'Vio'
+parameter = 'Ia_A'
 show_max_min = True
+save_svg = False
+
 filename = [None]*len(Nx)
 filepath = [None]*len(Nx)
 df = [None]*len(Nx)
@@ -36,7 +45,7 @@ color = [None]*len(Nx)
 for i in range(len(Nx)):
     Vstr = str(V[i])
     filename[i] =  parameter + f'_Nx{Nx[i]}_Nyz{Nyz[i]}_dx{dx[i]}_V{Vstr[2:]}.csv'
-    filepath[i] = os.path.join(cwd, 'Binary files', '1D plots', 'csv', filename[i])
+    filepath[i] = os.path.join(cwd, 'Binary files', '1D plots', 'csv', folder, filename[i])
     df[i] = pd.read_csv(filepath[i])
     max_x[i] = df[i].iloc[-1,0] + df[i].iloc[1,0] - df[i].iloc[0,0]
 
@@ -70,6 +79,10 @@ fig.update_yaxes(title_text=y_title)
 
 # set the thickness of the lines
 # fig.update_traces(line_width=4)
+
+# save svg file
+if save_svg:
+    fig.write_image("plot.svg")
 
 # Display the plot
 fig.show()
