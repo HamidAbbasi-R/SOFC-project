@@ -1,4 +1,4 @@
-def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], periodic=True, display=False, histogram='none'):
+def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], gradient=1 ,periodic=True, display=False, histogram='none'):
     """
     This function creates a periodic three phase 2D phase matrix with the given parameters.
     inputs:
@@ -87,14 +87,35 @@ def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], periodic=
     if mode=="normal":
         if len(vol_frac)==2:    # phsaes: 1-2-3
             phase_mat = np.zeros_like(smooth_mat_1, dtype=int)+3
-            a = np.quantile(smooth_mat_1.flatten(), q=vol_frac[0])
-            b = np.quantile(smooth_mat_2[smooth_mat_1 >= a].flatten(), q=vol_frac[1]/(1-vol_frac[0]))
-            phase_mat[smooth_mat_1 < a] = 1        
-            phase_mat[np.logical_and(smooth_mat_2 < b, smooth_mat_1 > a)] = 2
+            if gradient:
+                # for gradient three-phase microstructures it is assumed that pore phase has 
+                # a uniform distribution, but volume fraction of Ni and YSZ changes
+                Mg = 3      # Mg is gradient strength
+                vf_p = vol_frac[0]
+                vf_Ni_nom = vol_frac[1]
+                vf_Ni_min = vf_Ni_nom / Mg
+                vf_Ni_max = vf_Ni_nom + vf_Ni_nom / Mg * (Mg - 1)
+                vf_Ni = np.linspace(vf_Ni_min, vf_Ni_max, voxels[0])
+                for i in range(voxels[0]):
+                    a = np.quantile(smooth_mat_1[i,:,:].flatten(), q=vf_p)
+                    b = np.quantile(smooth_mat_2[i,:,:][smooth_mat_1[i,:,:] >= a].flatten(), q=vf_Ni[i]/(1-vf_p))
+                    phase_mat[i,:,:][smooth_mat_1[i,:,:] < a] = 1
+                    phase_mat[i,:,:][np.logical_and(smooth_mat_2[i,:,:] < b, smooth_mat_1[i,:,:] > a)] = 2
+            else:
+                a = np.quantile(smooth_mat_1.flatten(), q=vol_frac[0])
+                b = np.quantile(smooth_mat_2[smooth_mat_1 >= a].flatten(), q=vol_frac[1]/(1-vol_frac[0]))
+                phase_mat[smooth_mat_1 < a] = 1        
+                phase_mat[np.logical_and(smooth_mat_2 < b, smooth_mat_1 > a)] = 2
         if len(vol_frac)==1:    # phases: 0-1
             phase_mat = np.zeros_like(smooth_mat_1, dtype=int)
-            a = np.quantile(smooth_mat_1.flatten(), q=vol_frac)
-            phase_mat[smooth_mat_1 < a] = 1
+            if gradient:
+                vol_frac = np.linspace(vol_frac[0]/2, (1+vol_frac[0])/2, voxels[0])
+                for i in range(voxels[0]):
+                    a = np.quantile(smooth_mat_1[i,:,:].flatten(), q=vol_frac[i])
+                    phase_mat[i,:,:][smooth_mat_1[i,:,:] < a] = 1
+            else:
+                a = np.quantile(smooth_mat_1.flatten(), q=vol_frac)
+                phase_mat[smooth_mat_1 < a] = 1
     elif mode=="thin film":
         a = np.quantile(smooth_mat_1.flatten(), q=vol_frac[0])
         b = np.quantile(smooth_mat_1.flatten(), q=1-vol_frac[1])
@@ -110,7 +131,7 @@ def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], periodic=
     elif display==True and dim==3:
         # from postprocess import visualize_mesh
         from modules.postprocess import visualize_mesh as vm 
-        vm([phase_mat],[()], clip_widget=True)
+        vm([phase_mat],[()], clip_widget=False)
 
     # display the histogram of the smooth matrices
     if histogram=='1D':
@@ -972,6 +993,6 @@ def infiltration(phase_mat, loading):
     dil_inflr = ndi.binary_dilation(phase_inflr, iterations=2).astype(phase_inflr.dtype)
 
     # assign the second phase (pore=1, Ni=2, YSZ=3) to the dilated region
-    phase_mat[np.logical_and(dil_inflr,phase_mat==1)] = 2
+    phase_mat[np.logical_and(dil_inflr,phase_mat==1)] = 4
 
     return phase_mat
