@@ -938,11 +938,11 @@ def segment(phase_mat, sigma):
     return labels, volumes, centroids, dist_mat
 
 def infiltration(phase_mat, loading):
+    if loading == 0: return phase_mat
+
     import numpy as np
     import random
     import scipy.ndimage as ndi
-
-    if loading == 0: return phase_mat
 
     # find the interfacial surface area of the phases
     isa_12_mat, _, isa_31_mat, _, _, _ = interfacial_surface(phase_mat)
@@ -955,20 +955,23 @@ def infiltration(phase_mat, loading):
     length_isa = len(indices_isa_pore[0])
 
     # randomly select points from the indices
-    num_points = loading * length_isa
+    num_points = int(loading * length_isa)
     indices_infltr = random.sample(range(length_isa), num_points)
 
     # add the infiltration points to the phase matrix
+    phase_inflr = np.zeros(phase_mat.shape, dtype=bool)
     for i in range(num_points):
-        phase_mat[indices_isa_pore[0][indices_infltr[i]], 
-                  indices_isa_pore[1][indices_infltr[i]], 
-                  indices_isa_pore[2][indices_infltr[i]]] = 4
+        phase_inflr[
+            indices_isa_pore[0][indices_infltr[i]], 
+            indices_isa_pore[1][indices_infltr[i]], 
+            indices_isa_pore[2][indices_infltr[i]]] = True
         
-    # dilation process
-    phase_inflr = phase_mat == 4
+    # dilation process to increase the size of the infiltration region
+    # iteration parameter should be selected with care
+    # it affects the size of infiltrated particles
     dil_inflr = ndi.binary_dilation(phase_inflr, iterations=2).astype(phase_inflr.dtype)
 
-    # assign the second phase (Ni) to the dilated region
+    # assign the second phase (pore=1, Ni=2, YSZ=3) to the dilated region
     phase_mat[np.logical_and(dil_inflr,phase_mat==1)] = 2
 
     return phase_mat
