@@ -19,6 +19,7 @@
         "Ny": 80,
         "Nz": 80,
         "sig_gen": 3,
+        "gradient_factor": 1,
         "seed": [30,20],
         "volume_fractions": {
             "pores": 0.5,
