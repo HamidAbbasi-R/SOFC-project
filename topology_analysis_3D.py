@@ -2,29 +2,32 @@ if __name__ == '__main__':
     from modules import topology as tpl
     import numpy as np
 
-    N_walks = [    # Number of voxels in each direction
-        100,
+    N = [    # Number of voxels in each direction
+        200,
         100,
         100,
         ]
 
-    sigma_gen = [2,6]   # Generation parameter
+    sigma_gen = 3   # Generation parameter
     sigma_seg = 1.5   # Segmegation parameter
     dx = 90e-9      # Voxel size [m]
-    show_TPB = False
+    loading = 0  # Loading of the infiltrant
+    show_TPB = True
 
     phase_mat = tpl.create_phase_data(
-        voxels = N_walks,
-        vol_frac = [0.28, 0.28, 0.44],
+        voxels = N,
+        vol_frac = [0.4, 0.25, 0.35],
         sigma = sigma_gen,
         seed = [50,10],
-        display = False)
+        gradient_factor = 4,
+        display = True)
 
-    import numpy as np
+    phase_mat = tpl.infiltration(phase_mat, loading)
+
     phase_mat_nans, labeled_pores, percolating_labels\
         = tpl.percolation_analysis(phase_mat)
     
-    isa_12_mat, isa_23_mat, isa_31_mat, isa_12, isa_23, isa_31 = tpl.interfacial_surface(phase_mat_nans)
+    # isa_12_mat, isa_23_mat, isa_31_mat, isa_12, isa_23, isa_31 = tpl.interfacial_surface(phase_mat_nans)
 
     # triple phase boundary analysis
     TPBs, TPB_density, vertices, lines = tpl.measure_TPB(phase_mat_nans, dx)
@@ -33,7 +36,7 @@ if __name__ == '__main__':
         import pyvista as pv
         TPB_mesh = pv.PolyData(vertices, lines=lines)
         from modules.postprocess import visualize_mesh as vm
-        vm([phase_mat_nans], [(3,3)], clip_widget=False, TPB_mesh=TPB_mesh)
+        vm([phase_mat_nans], [(2,4)], clip_widget=False, TPB_mesh=TPB_mesh)
 
 
     # image segmentation 
@@ -54,7 +57,7 @@ if __name__ == '__main__':
     d_avg[2] = np.mean(radius[2])*2    # [μm]
     print(f'd_avg = {d_avg[0]:.2}, {d_avg[1]:.2}, {d_avg[2]:.2} [μm]')
     print(f'TPB_density = {TPB_density:.4} [μm^-2]')
-    print(f'Length to pore/particle diameter ratio = {np.max(N_walks)*dx*1e6/d_avg[0]:.2f}, {np.max(N_walks)*dx*1e6/d_avg[1]:.2f}, {np.max(N_walks)*dx*1e6/d_avg[2]:.2f}')
+    print(f'Length to pore/particle diameter ratio = {np.max(N)*dx*1e6/d_avg[0]:.2f}, {np.max(N)*dx*1e6/d_avg[1]:.2f}, {np.max(N)*dx*1e6/d_avg[2]:.2f}')
 
     # volumes = [0,0,0,0]
     # for i,sigma in enumerate([1,3,5,7]):
