@@ -65,14 +65,15 @@ def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], periodic=
 
     # apply the Gaussian filter on the tiled random matrices. tiled random matrices
     # are necessary to create a periodic phase matrix
-    # smooth_mat_1 = skimage.filters.gaussian(np.tile(rand_mat_1,tile_mat),\
-    #      sigma=sigma, mode='reflect')
-    # smooth_mat_2 = skimage.filters.gaussian(np.tile(rand_mat_2,tile_mat),\
-    #      sigma=sigma, mode='reflect')
+    if type(sigma) == int or type(sigma) == float:
+        sigma = np.array([sigma, sigma])
+    elif type(sigma) == list:
+        sigma = np.array(sigma)
+
     smooth_mat_1 = gaussian_filter(np.tile(rand_mat_1,tile_mat),\
-            sigma=sigma, mode='reflect')
+            sigma=sigma[0], mode='reflect')
     smooth_mat_2 = gaussian_filter(np.tile(rand_mat_2,tile_mat),\
-            sigma=sigma, mode='reflect')
+            sigma=sigma[1], mode='reflect')
 
     # extract center matrices from the tiled smooth matrices
     if dim==2 and periodic==True:
@@ -109,7 +110,7 @@ def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], periodic=
     elif display==True and dim==3:
         # from postprocess import visualize_mesh
         from modules.postprocess import visualize_mesh as vm 
-        vm([phase_mat],[()])
+        vm([phase_mat],[()], clip_widget=True)
 
     # display the histogram of the smooth matrices
     if histogram=='1D':
@@ -509,7 +510,7 @@ def shuffle_labels(labeled_mat):
     shuffled_mat[shuffled_mat==0] = np.nan
     return shuffled_mat
 
-def ISA(phase_mat):
+def interfacial_surface(phase_mat):
     """
     Measures the interfacial surface between different phases.
 
@@ -567,11 +568,8 @@ def image_segmentation(phase_mat,sigma=5,display=False):
         
     Outputs:
     labels:"""
-    from tqdm import tqdm
-    from scipy import ndimage as ndi
-    from skimage.segmentation import watershed
-    from skimage.filters import gaussian
     import numpy as np
+    import concurrent.futures
     
     # import plotly.io as po
     # from plotly.subplots import make_subplots
@@ -588,26 +586,11 @@ def image_segmentation(phase_mat,sigma=5,display=False):
     volumes = [[],[],[]]
     centroids = [[],[],[]]
     
-    for i in [1,2,3]:
-        phase = phase_mat_nans == i
-        dist_mat[:,:,:,i-1] = ndi.distance_transform_edt(phase.astype(int))
-        dist_mat[:,:,:,i-1] = gaussian(dist_mat[:,:,:,i-1], sigma=sigma, mode='nearest')
-        dist_mat[:,:,:,i-1][~phase] = 0
-        # visualize_mesh([dist_mat[:,:,:,i-1]], [(0.0001,1000)])
-        # coords = peak_local_max(dist_mat[:,:,:,i-1], footprint=fp, min_distance=1)
-        # mask = np.zeros(dist_mat[:,:,:,i-1].shape, dtype=bool)
-        # mask[tuple(coords.T)] = True
-        # markers, _ = ndi.label(mask)
-        labels[:,:,:,i-1] = watershed(-dist_mat[:,:,:,i-1], mask=phase)
-        labels[:,:,:,i-1] = shuffle_labels(labels[:,:,:,i-1])
-        
-        volumes[i-1] = np.zeros((np.nanmax(labels[:,:,:,i-1]).astype(int),1))
-        centroids[i-1] = np.zeros((np.nanmax(labels[:,:,:,i-1]).astype(int),3))
-        
-        for particle in tqdm(np.arange(np.nanmax(labels[:,:,:,i-1]), dtype=int)):
-            x = np.where(labels[:,:,:,i-1] == particle+1)
-            centroids[i-1][particle,:] = np.average(x,axis=1)
-            volumes[i-1][particle] = len(x[0])
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        results = [executor.submit(segment, phase_mat_nans==i, sigma) for i in [1,2,3]]
+
+        for i, f in enumerate(concurrent.futures.as_completed(results)):
+            labels[:,:,:,i], volumes[i], centroids[i], dist_mat[:,:,:,i] = f.result()
     
     if display:
         from modules.postprocess import visualize_mesh as vm
@@ -686,6 +669,8 @@ def create_microstructure(inputs, display=False):
     if inputs['microstructure']['reduced_geometry']:
         domain = domain[:inputs['microstructure']['Nx'],:,:]
 
+    domain = infiltration(domain, inputs['microstructure']['infiltration loading'])
+
     return domain
 
 def topological_operations(inputs, domain, show_TPB=False):
@@ -696,10 +681,13 @@ def topological_operations(inputs, domain, show_TPB=False):
     # removing thin boundaries
     # remove thin boundaries to avoid numerical error for the case of Neumann BCs.
     # don't remove thin boundaries for periodic boundary conditions. it will cause problems.
+    # from scipy.io import savemat
+    # savemat('domain.mat', {'domain': domain})
+    
     domain = remove_thin_boundaries(domain.astype(float))
     # extract the domain that should be solved. ds is short for Domain for Solver.
     # when periodic boundary condition is used, percolation analysis should not be done.
-    domain, _, _ = percolation_analysis(domain)
+    # domain, _, _ = percolation_analysis(domain)
 
     # measure the triple phase boundary and create a mask for source term
     TPB_mask, TPB_density, vertices, lines = measure_TPB(domain, inputs['microstructure']['dx'])
@@ -718,6 +706,7 @@ def topological_operations(inputs, domain, show_TPB=False):
         from modules.postprocess import visualize_mesh as vm
         vm([domain], [(1,1)], clip_widget=False, TPB_mesh=TPB_mesh)
 
+    # tortuosity_calculator(domain)
     return domain, TPB_dict
 
 # specific functions for entire cell microstructure
@@ -820,3 +809,166 @@ def create_ideal_microstructre(inputs, display=False):
         vm([domain],[()])
     
     return domain
+
+def tortuosity_calculator(domain):
+    # This function uses random walk calculation to measure tortuosity of each phase
+    # in the domain. The tortuosity is calculated as the ratio of the average distance
+    # traveled by the random walker to the distance between the starting and ending
+    # points. The random walker is allowed to move in all 26 directions.
+    # The function returns the tortuosity of each phase in the domain.
+    
+    import numpy as np
+    import random
+    import concurrent.futures
+
+    # numbers in the domain should be 0-1-2
+    domain -= 1
+
+    # define the directions in which the random walker can move
+    directions = np.array([[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1],
+                            [0,0,-1], [1,1,0], [1,-1,0], [-1,1,0], [-1,-1,0],
+                            [1,0,1], [1,0,-1], [-1,0,1], [-1,0,-1], [0,1,1],
+                            [0,1,-1], [0,-1,1], [0,-1,-1], [1,1,1], [1,1,-1],
+                            [1,-1,1], [1,-1,-1], [-1,1,1], [-1,1,-1], [-1,-1,1],
+                            [-1,-1,-1]])
+
+    N = domain.shape
+    # define the number of random walks to be performed
+    N_walks = 1000
+
+    # define the number of steps in each random walk
+    steps = 100
+
+    # initialize the distance array
+    distance = np.zeros(shape = (3, N_walks, steps))
+    distance[:] = np.nan
+    distance_avg = np.zeros(shape = (3, steps))
+
+    # perform the random walk for each phase
+    for phase in range(3):        
+        # select a random starting point within the phase
+        start = np.array([N[0]//2, N[1]//2, N[2]//2])
+        f = domain[start[0], start[1], start[2]]
+        while f != phase:
+            N1 = random.randint(2*N[0]//5, 3*N[0]//5)
+            N2 = random.randint(2*N[1]//5, 3*N[1]//5)
+            N3 = random.randint(2*N[2]//5, 3*N[2]//5)
+            start = np.array([N1, N2, N3])
+            f = domain[N1, N2, N3]
+        
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            res_parallel = [executor.submit(single_random_walk, domain, start, directions, steps) for _ in range(N_walks)]
+            
+            for Nw, f in enumerate(concurrent.futures.as_completed(res_parallel)):
+                distance[phase, Nw, :] = f.result()
+
+        distance_avg[phase,:] = np.nanmean(distance[phase,:,:], axis=0)
+
+
+    import plotly.graph_objects as go
+
+    for p in range(3):
+        # initialize the figure
+        fig = go.Figure()
+        for Nw in range(N_walks):
+            fig.add_scatter(y=distance[p,Nw,:], line=dict(color='grey', width=0.5), showlegend=False)
+        fig.add_scatter(y=distance_avg[p,:], line=dict(color='black', width=2), name='Phase '+str(p))
+        fig.show()
+
+    return distance
+
+def single_random_walk(domain, start, directions, steps):
+    import numpy as np
+    import random
+
+    N = domain.shape
+
+    # initialize the random walker
+    walker = [None] * steps
+    walker[0] = start
+
+    # the first distance is zero
+    distance = np.zeros(steps)
+    distance[:] = np.nan
+    
+    # perform the random walk
+    for t in range(1,steps):
+        # choose a random direction
+        direction = random.choice(directions)
+        
+        # move the walker in that direction
+        walker[t] = walker[t-1] + direction
+
+        # check if the walker has left the domain or has crossed a phase boundary
+        if (walker[t][0]<0 or walker[t][0]>=N[0] or 
+            walker[t][1]<0 or walker[t][1]>=N[1] or 
+            walker[t][2]<0 or walker[t][2]>=N[2]):
+            break
+
+        elif (domain[walker[t][0],   walker[t][1],   walker[t][2]] !=
+            domain[walker[t-1][0], walker[t-1][1], walker[t-1][2]]):
+            walker[t] = walker[t-1]
+
+        # calculate the distance traveled by the walker
+        distance[t] = np.linalg.norm(walker[t]-start)
+    
+    return distance
+
+def segment(phase_mat, sigma):
+    from scipy import ndimage as ndi
+    from skimage.filters import gaussian
+    from skimage.segmentation import watershed
+    import numpy as np
+
+    dist_mat = ndi.distance_transform_edt(phase_mat.astype(int))
+    dist_mat = gaussian(dist_mat, sigma=sigma, mode='nearest')
+    dist_mat[~phase_mat] = 0
+    
+    labels = watershed(-dist_mat, mask=phase_mat)
+    labels = shuffle_labels(labels)
+    
+    volumes = np.zeros((np.nanmax(labels).astype(int),1))
+    centroids = np.zeros((np.nanmax(labels).astype(int),3))
+    
+    for particle in np.arange(np.nanmax(labels), dtype=int):
+        x = np.where(labels == particle+1)
+        centroids[particle,:] = np.average(x,axis=1)
+        volumes[particle] = len(x[0])
+    
+    return labels, volumes, centroids, dist_mat
+
+def infiltration(phase_mat, loading):
+    import numpy as np
+    import random
+    import scipy.ndimage as ndi
+
+    if loading == 0: return phase_mat
+
+    # find the interfacial surface area of the phases
+    isa_12_mat, _, isa_31_mat, _, _, _ = interfacial_surface(phase_mat)
+
+    # interfacial surface area of pores
+    isa_pore = np.logical_or(isa_12_mat, isa_31_mat)
+
+    # find all the indices of the pore interface
+    indices_isa_pore = np.where(isa_pore == True)
+    length_isa = len(indices_isa_pore[0])
+
+    # randomly select points from the indices
+    num_points = loading * length_isa
+    indices_infltr = random.sample(range(length_isa), num_points)
+
+    # add the infiltration points to the phase matrix
+    for i in range(num_points):
+        phase_mat[indices_isa_pore[0][indices_infltr[i]], 
+                  indices_isa_pore[1][indices_infltr[i]], 
+                  indices_isa_pore[2][indices_infltr[i]]] = 4
+        
+    # dilation process
+    phase_inflr = phase_mat == 4
+    dil_inflr = ndi.binary_dilation(phase_inflr, iterations=2).astype(phase_inflr.dtype)
+
+    # assign the second phase (Ni) to the dilated region
+    phase_mat[np.logical_and(dil_inflr,phase_mat==1)] = 2
+
+    return phase_mat
