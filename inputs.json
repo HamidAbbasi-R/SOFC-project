@@ -12,7 +12,7 @@
 
     "microstructure": 
     {
-        "dx": 50e-09,
+        "dx": 10e-09,
         "volume_fractions": {
             "pores": 0.44,
             "Ni": 0.28,
@@ -71,10 +71,10 @@
     
     "output_options": 
     {        
-        "show_residuals": false,
-        "show_3D_plots": false,
-        "show_1D_plots": false,
-        "csv_output": true,
+        "show_residuals": true,
+        "show_3D_plots": true,
+        "show_1D_plots": true,
+        "csv_output": false,
         "img_output": false
     },
 

@@ -79,14 +79,14 @@ if __name__ == '__main__':
     # scaling the electron and ion potentials to the original values
     phi[1] = phi[1] + scale_ion
     phi[2] = phi[2] + scale_ion
-    dense_m = post.create_dense_matrices(phi, inputs, masks_dict, indices, field_functions)
+    dense_m = post.create_dense_matrices(phi, masks_dict, indices, field_functions)
 
     if (inputs['output_options']['show_3D_plots'] or 
         inputs['output_options']['show_1D_plots'] or 
         inputs['output_options']['csv_output']):
         
         post.visualize_3D_matrix(
-            inputs, dense_m, masks_dict, TPB_dict,
+            inputs, dense_m, TPB_dict,
             plots = {
                 'cH2_1D':       False,
                 'Vel_1D':       False,
@@ -96,8 +96,8 @@ if __name__ == '__main__':
                 'eta_con_1D':   False,
                 'cH2_3D':       False,
                 'Vel_3D':       False,
-                'Vio_3D':       False,
-                'Ia_3D':        False,
+                'Vio_3D':       True,
+                'Ia_3D':        True,
                 'eta_act_3D':   False,
                 'eta_con_3D':   False,
             })

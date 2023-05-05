@@ -21,7 +21,7 @@ def visualize_residuals(inputs, residuals):
     fig.update_yaxes(exponentformat="e")
     fig.show()
 
-def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots):
+def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
     # visualize the solution
     import numpy as np
 
@@ -36,14 +36,8 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots):
         lines = TPB_dict['lines']
         pv.set_plot_theme("document")
         TPB_mesh = pv.PolyData(vertices, lines=lines)
-
-    N = [
-        inputs['microstructure']['Nx'], 
-        inputs['microstructure']['Ny'], 
-        inputs['microstructure']['Nz']]
     
     dx = inputs['microstructure']['dx']
-    ds = masks_dict['ds']
     mats = []
     thds = []
     log_scale = []
@@ -56,6 +50,8 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots):
     dense_Ia = dense_m['Ia']
     dense_eta_act = dense_m['eta_act']
     dense_eta_con = dense_m['eta_con']
+    
+    N = dense_phi.shape
 
     x = np.arange(N[0])*dx*1e6
 
@@ -193,22 +189,18 @@ def visualize_3D_matrix(inputs, dense_m, masks_dict, TPB_dict, plots):
             TPB_mesh = TPB_mesh,
             log_scale = log_scale)
 
-def create_TPB_field_variable_individual(inputs, phi_dense, indices, masks_dict, func):
+def create_TPB_field_variable_individual(phi_dense, indices, masks_dict, func):
     # visualize a function on the TPB
     import numpy as np
-    N = [
-        inputs['microstructure']['Nx'], 
-        inputs['microstructure']['Ny'], 
-        inputs['microstructure']['Nz']]
+    N = phi_dense.shape
     ds = masks_dict['ds']
-
 
     TPB_mat = np.zeros(shape = N)
 
     for p in [0,1,2]:
         for n in indices[p]['source']:
             i,j,k = indices[p]['all_points'][n]
-            if close_to_edge(inputs, i,j,k): continue
+            if close_to_edge(N, i,j,k): continue
 
             cH2_i = phi_dense[i,j,k] if p==0 else np.average(phi_dense[i-1:i+2,j-1:j+2,k-1:k+2][ds[0][i-1:i+2,j-1:j+2,k-1:k+2]])
             Vel_i = phi_dense[i,j,k] if p==1 else np.average(phi_dense[i-1:i+2,j-1:j+2,k-1:k+2][ds[1][i-1:i+2,j-1:j+2,k-1:k+2]])
@@ -319,12 +311,8 @@ def mean_confidence_interval(data, confidence=0.95):
     h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
     return m-h, m+h
 
-def create_field_variable_individual(inputs, phi, indices, func):
+def create_field_variable_individual(N, phi, indices, func):
     import numpy as np
-    N = [
-        inputs['microstructure']['Nx'], 
-        inputs['microstructure']['Ny'], 
-        inputs['microstructure']['Nz']]
     field_mat = np.zeros(shape = N)
 
     for n in indices['interior']:
@@ -471,11 +459,7 @@ def visualize_contour(mat, n_levels=5):
     
     return None
 
-def close_to_edge(inputs, i,j,k):
-    N = [
-        inputs['microstructure']['Nx'], 
-        inputs['microstructure']['Ny'], 
-        inputs['microstructure']['Nz']]
+def close_to_edge(N, i,j,k):
     if \
     (i==1 and j==1) or\
     (i==1 and k==1) or\
@@ -561,20 +545,17 @@ def visualize_3D_matrix_entire_cell(inputs, phi_dense, masks_dict, TPB_dict, tit
 
         plot_with_continuous_error(x, Vio_lin, Vio_max, Vio_min, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title='Hydrogen concentration (kgm-3)')
 
-def create_dense_matrices(phi, inputs, masks_dict, indices, field_functions):
+def create_dense_matrices(phi, masks_dict, indices, field_functions):
     import numpy as np
-    N = [
-        inputs['microstructure']['Nx'], 
-        inputs['microstructure']['Ny'], 
-        inputs['microstructure']['Nz']]
     ds = masks_dict['ds']
+    N = ds[0].shape
     phi_dense = np.zeros(N)
     phi_dense[ds[0]] = phi[0]
     phi_dense[ds[1]] = phi[1]
     phi_dense[ds[2]] = phi[2]
-    Ia_mat = create_TPB_field_variable_individual(inputs, phi_dense, indices, masks_dict, field_functions['Ia'])
-    eta_act_mat = create_TPB_field_variable_individual(inputs, phi_dense, indices, masks_dict, field_functions['eta_act'])
-    eta_conc_mat = create_field_variable_individual(inputs, phi_dense, indices[0], field_functions['eta_con'])
+    Ia_mat = create_TPB_field_variable_individual(phi_dense, indices, masks_dict, field_functions['Ia'])
+    eta_act_mat = create_TPB_field_variable_individual(phi_dense, indices, masks_dict, field_functions['eta_act'])
+    eta_conc_mat = create_field_variable_individual(N, phi_dense, indices[0], field_functions['eta_con'])
     sol_cH2 = np.copy(phi_dense)
     sol_cH2[ds[0] == False] = np.nan
     sol_Vel = np.copy(phi_dense)

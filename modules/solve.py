@@ -19,9 +19,9 @@ def Newton_loop_individual(inputs, J, rhs, phi, indices, field_functions, masks_
 
     dx = inputs['microstructure']['dx']
     N = [
-        inputs['microstructure']['Nx'], 
-        inputs['microstructure']['Ny'], 
-        inputs['microstructure']['Nz']]
+        inputs['microstructure']['voxels']['X'], 
+        inputs['microstructure']['voxels']['Y'], 
+        inputs['microstructure']['voxels']['Z']]
 
     prev_iters = len(residuals[0])
     iter = prev_iters
@@ -32,10 +32,7 @@ def Newton_loop_individual(inputs, J, rhs, phi, indices, field_functions, masks_
         # update J[n,n] and rhs[b] for interior points (source==True)
         J, rhs = update_interior(
             inputs, J, rhs, indices, 
-            field_functions,
-            phi,
-            dx, N, ds,
-            sum_nb, inputs['is_multiple_instances'], inputs['M_instances'])
+            field_functions, phi, ds,sum_nb)
         
         # scaling here
         J_scl, rhs_scl = matrix_scaling_individual(inputs, J, rhs)
@@ -65,8 +62,11 @@ def Newton_loop_individual(inputs, J, rhs, phi, indices, field_functions, masks_
     
     return phi, residuals
 
-def update_interior(inputs, J, rhs, indices, field_functions, phi, dx, N, ds, sum_nb, isMi, M_ins=None):
+def update_interior(inputs, J, rhs, indices, field_functions, phi, ds, sum_nb):
     import numpy as np
+
+    N = ds[0].shape
+    dx = inputs['microstructure']['dx']
 
     f = [field_functions['f'][0], field_functions['f'][1], field_functions['f'][2]]
     fp = [field_functions['fp'][0], field_functions['fp'][1], field_functions['fp'][2]]
@@ -81,6 +81,8 @@ def update_interior(inputs, J, rhs, indices, field_functions, phi, dx, N, ds, su
     phi_dense[1][ds[1]] = phi[1]
     phi_dense[2][ds[2]] = phi[2]
 
+    isMi = inputs['is_multiple_instances']
+    M_ins = inputs['M_instances']
     if isMi:
         j_max = N[1]-1
         j_seg = j_max//M_ins+1

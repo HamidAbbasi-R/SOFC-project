@@ -750,7 +750,8 @@ def topological_operations(inputs, domain, show_TPB=False):
     # domain, _, _ = percolation_analysis(domain)
 
     # measure the triple phase boundary and create a mask for source term
-    TPB_mask, TPB_density, vertices, lines = measure_TPB(domain, inputs['microstructure']['dx'])
+    dx = inputs['microstructure']['dx']
+    TPB_mask, TPB_density, vertices, lines = measure_TPB(domain, dx)
     print("Done!")
 
     TPB_dict = {
