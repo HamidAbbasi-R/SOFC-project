@@ -1,4 +1,13 @@
-def create_phase_data(voxels, vol_frac, sigma, mode="normal", seed=[], gradient_factor=1 ,periodic=True, display=False, histogram='none'):
+def create_microstructure_plurigaussian(
+        voxels, 
+        vol_frac, 
+        sigma, 
+        mode = "normal", 
+        seed = [], 
+        gradient_factor = 1,
+        periodic = True, 
+        display = False, 
+        histogram = 'none'):
     """
     This function creates a periodic three phase 2D phase matrix with the given parameters.
     inputs:
@@ -489,13 +498,19 @@ def percolation_analysis(phase_mat):
         raise Exception("Error! One of the phases is not percolating!")
 
     # delete the isolated (non-percolating) pores. format: [1-2-3]
-    percolating_label_1 = np.ones(shape = lw1_shuffled.shape)
-    percolating_label_2 = np.ones(shape = lw2_shuffled.shape)+1
-    percolating_label_3 = np.ones(shape = lw3_shuffled.shape)+2
+    percolating_label_1 = np.ones(shape = phase_mat.shape)
+    percolating_label_2 = np.ones(shape = phase_mat.shape)
+    percolating_label_3 = np.ones(shape = phase_mat.shape)
+    percolating_label_1[:] = np.nan
+    percolating_label_2[:] = np.nan
+    percolating_label_3[:] = np.nan
     
-    percolating_label_1[lw1_shuffled!=intersection_x_1[0]] = np.nan
-    percolating_label_2[lw2_shuffled!=intersection_x_2[0]] = np.nan
-    percolating_label_3[lw3_shuffled!=intersection_x_3[0]] = np.nan
+    for i in range(len(intersection_x_1)):
+        percolating_label_1[lw1_shuffled==intersection_x_1[i]] = 1
+    for i in range(len(intersection_x_2)):
+        percolating_label_2[lw2_shuffled==intersection_x_2[i]] = 2
+    for i in range(len(intersection_x_3)):
+        percolating_label_3[lw3_shuffled==intersection_x_3[i]] = 3
     
     phase_mat_nans = np.zeros(shape = phase_mat.shape)
     # phase_mat_nans = np.nan
@@ -596,8 +611,6 @@ def image_segmentation(phase_mat,sigma=5,display=False):
     # import plotly.graph_objects as go
     
     # po.renderers.default = "browser"
-    
-    phase_mat_nans, _, percolating_labels = percolation_analysis(phase_mat)
         
     labels = np.zeros(shape = np.append(phase_mat.shape,3))
     dist_mat = np.zeros(shape = np.append(phase_mat.shape,3))
@@ -607,16 +620,21 @@ def image_segmentation(phase_mat,sigma=5,display=False):
     centroids = [[],[],[]]
     
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        results = [executor.submit(segment, phase_mat_nans==i, sigma) for i in [1,2,3]]
+        # results = [executor.submit(segment, phase_mat==i, sigma) for i in [1,2,3]]
+        results_1 = executor.submit(segment, phase_mat==1, sigma)
+        results_2 = executor.submit(segment, phase_mat==2, sigma)
+        results_3 = executor.submit(segment, phase_mat==3, sigma)
 
-        for i, f in enumerate(concurrent.futures.as_completed(results)):
-            labels[:,:,:,i], volumes[i], centroids[i], dist_mat[:,:,:,i] = f.result()
+        # for i in range(3):
+        labels[:,:,:,0], volumes[0], centroids[0], dist_mat[:,:,:,0] = results_1.result()
+        labels[:,:,:,1], volumes[1], centroids[1], dist_mat[:,:,:,1] = results_2.result()
+        labels[:,:,:,2], volumes[2], centroids[2], dist_mat[:,:,:,2] = results_3.result()
     
     if display:
         from modules.postprocess import visualize_mesh as vm
         vm([labels[:,:,:,0], labels[:,:,:,1], labels[:,:,:,2]], [(), (), ()])
 
-    return labels, dist_mat, phase_mat_nans, percolating_labels, volumes, centroids
+    return labels, dist_mat, volumes, centroids
 
 def remove_thin_boundaries(phase_mat):
     """
@@ -658,39 +676,60 @@ def remove_edges(phi):
     return phi
     
 def create_microstructure(inputs, display=False):
+    flag_lattice = inputs['microstructure']['lattice_geometry']['flag']
+    flag_reduced = inputs['microstructure']['reduced_geometry']['flag']
+    flag_plurigaussian = inputs['microstructure']['plurigaussian']['flag']
+    
+    dx = inputs['microstructure']['dx']
+    
+    voxels = [
+        inputs['microstructure']['voxels']['X'], 
+        inputs['microstructure']['voxels']['Y'],
+        inputs['microstructure']['voxels']['Z']]
+    
+    vol_frac = [
+        inputs['microstructure']['volume_fractions']['pores'],
+        inputs['microstructure']['volume_fractions']['Ni'],
+        inputs['microstructure']['volume_fractions']['YSZ']]
+    
+    infiltration_loading = inputs['microstructure']['infiltration_loading']
+
     # create the entire domain
-    if inputs['microstructure']['ideal_geometry']:
-        domain = create_ideal_microstructre(inputs, display)
-        return domain
+    if flag_lattice:
+        d_particle = inputs['microstructure']['lattice_geometry']['particle_diameter']
+        domain = create_microstructure_lattice(
+            vol_frac, 
+            dx, 
+            voxels, 
+            d_particle)
     
-    if inputs['microstructure']['reduced_geometry']:
-        if inputs['microstructure']['Nx_extended'] < inputs['microstructure']['Nx']:
-            raise ValueError('Nx_extended must be larger than Nx')
-        voxels = [inputs['microstructure']['Nx_extended'], 
-                  inputs['microstructure']['Ny'],
-                  inputs['microstructure']['Nz']]
-    else:
-        voxels = [inputs['microstructure']['Nx'], 
-                  inputs['microstructure']['Ny'],
-                  inputs['microstructure']['Nz']]
+    elif flag_plurigaussian:
+        sig_gen = inputs['microstructure']['plurigaussian']['sig_gen']
+        seed = inputs['microstructure']['plurigaussian']['seed']
+        gradient_factor = inputs['microstructure']['plurigaussian']['gradient_factor']
+        
+        if flag_reduced:
+            Nx_extended = inputs['microstructure']['reduced_geometry']['Nx_extended']
+            Nx = voxels[0]
+            if Nx_extended < Nx:
+                raise ValueError('Nx_extended must be larger than Nx')
+            voxels[0] = Nx_extended
 
-    vol_frac = [inputs['microstructure']['volume_fractions']['pores'],
-                inputs['microstructure']['volume_fractions']['Ni'],
-                inputs['microstructure']['volume_fractions']['YSZ']]
-
-    domain = create_phase_data(
-        voxels = voxels,
-        vol_frac = vol_frac,
-        sigma = inputs['microstructure']['sig_gen'],
-        seed = inputs['microstructure']['seed'],
-        gradient_factor = inputs['microstructure']['gradient_factor'],
-        display = display,
-        )
+        domain = create_microstructure_plurigaussian(
+            voxels = voxels,
+            vol_frac = vol_frac,
+            sigma = sig_gen,
+            seed = seed,
+            gradient_factor = gradient_factor)
     
-    if inputs['microstructure']['reduced_geometry']:
-        domain = domain[:inputs['microstructure']['Nx'],:,:]
+        if flag_reduced:
+            domain = domain[:voxels[0],:,:]
 
-    domain = infiltration(domain, inputs['microstructure']['infiltration loading'])
+    domain = infiltration(domain, infiltration_loading)
+
+    if display:
+        from modules.postprocess import visualize_mesh as vm
+        vm([domain], [(2,3)], save=True)
 
     return domain
 
@@ -725,7 +764,7 @@ def topological_operations(inputs, domain, show_TPB=False):
         import pyvista as pv
         TPB_mesh = pv.PolyData(vertices, lines=lines)
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(1,1)], clip_widget=False, TPB_mesh=TPB_mesh)
+        vm([domain], [(2,3)], clip_widget=False, TPB_mesh=TPB_mesh)
 
     # tortuosity_calculator(domain)
     return domain, TPB_dict
@@ -734,7 +773,7 @@ def topological_operations(inputs, domain, show_TPB=False):
 def create_microstructure_entire_cell(inputs):
     import numpy as np
     
-    domain_a = create_phase_data(
+    domain_a = create_microstructure_plurigaussian(
         voxels = [inputs['Nx_a'],inputs['Ny'],inputs['Nz']],
         vol_frac = [inputs['vf_pores_a'],inputs['vf_Ni_a'],inputs['vf_YSZ_a']],
         sigma = inputs['sig_gen_a'],
@@ -742,7 +781,7 @@ def create_microstructure_entire_cell(inputs):
         display = False,
         )
     
-    domain_c = create_phase_data(
+    domain_c = create_microstructure_plurigaussian(
         voxels = [inputs['Nx_c'],inputs['Ny'],inputs['Nz']],
         vol_frac = [inputs['vf_pores_c'],inputs['vf_LSM_c'],inputs['vf_YSZ_c']],
         sigma = inputs['sig_gen_c'],
@@ -993,6 +1032,61 @@ def infiltration(phase_mat, loading):
     dil_inflr = ndi.binary_dilation(phase_inflr, iterations=2).astype(phase_inflr.dtype)
 
     # assign the second phase (pore=1, Ni=2, YSZ=3) to the dilated region
-    phase_mat[np.logical_and(dil_inflr,phase_mat==1)] = 4
+    phase_mat[np.logical_and(dil_inflr,phase_mat==1)] = 2
 
+    return phase_mat
+
+def create_microstructure_lattice(vol_frac, dx, voxels, d_particle):
+    # from modules.postprocess import visualize_mesh as vm
+    import numpy as np
+    from scipy.optimize import fsolve
+
+    N = voxels
+
+    if sum(vol_frac) - 1 > 1e-2:
+        raise ValueError('Sum of volume fractions must be equal to 1!')
+
+    if (vol_frac[1] != vol_frac[2]):
+        raise ValueError('For lattice microstructure, volume fractions of Ni and YSZ must be equal!')
+    
+    vf_particle = vol_frac[1] + vol_frac[2]
+
+    if vf_particle < np.pi/6 or vf_particle > 0.965:
+        raise ValueError('For ordered lattice microstructure, particle volume fraction should be between 0.5236 and 0.965!')
+    
+    def find_vf(f0):
+        f = 4/3*np.pi*(1 - 9/2*f0**2 + 3/2*f0**3)/8/(1-f0)**3 - vf_particle
+        return f
+
+    f0 = fsolve(find_vf, 0.1)
+
+    r = d_particle / 2
+    L_lattice = 2*r*(1-f0)
+    N_lat = int(L_lattice // dx)
+
+    phase_mat_lat = np.zeros((N_lat,2*N_lat,2*N_lat), dtype=int)
+    dist_center_mat = dx * np.linalg.norm(
+        np.indices((N_lat,N_lat,N_lat), dtype=int) -
+        np.array([N_lat//2,N_lat//2,N_lat//2]).reshape((3,1,1,1)), axis=0)
+    
+    phase_mat_lat[:,:N_lat,:N_lat][dist_center_mat < r] = 1
+    phase_mat_lat[:,N_lat:,N_lat:][dist_center_mat < r] = 1
+    phase_mat_lat[:,N_lat:,:N_lat][dist_center_mat < r] = 2
+    phase_mat_lat[:,:N_lat,N_lat:][dist_center_mat < r] = 2
+
+    shape_lat = np.array(phase_mat_lat.shape)
+    X_tiles = int(N[0] // shape_lat[0])
+    Y_tiles = int(N[1] // shape_lat[1])
+    Z_tiles = int(N[2] // shape_lat[2])
+
+    # create the entire microstructure by tiling a single lattice
+    phase_mat = np.tile(phase_mat_lat, (X_tiles,Y_tiles,Z_tiles)).astype(int)
+
+    # roll the lattice by half the size of a single lattice in all directions
+    phase_mat = np.roll(phase_mat, N_lat//2, axis=0)
+    phase_mat = np.roll(phase_mat, N_lat//2, axis=1)
+    phase_mat = np.roll(phase_mat, N_lat//2, axis=2)
+
+    # phase numbers are assigned as follows:
+    phase_mat += 1      # pore=1, Ni=2, YSZ=3
     return phase_mat
