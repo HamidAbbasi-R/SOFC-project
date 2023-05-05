@@ -366,7 +366,7 @@ def visualize_mesh(mat, thd=[()], blocks=[], titles=[], clip_widget=False, TPB_m
     import matplotlib.pyplot as plt
     
     pv.set_plot_theme("document")
-    cmap = plt.cm.get_cmap("jet")
+    cmap = plt.cm.get_cmap("viridis")
 
     subplts = len(mat)
     
@@ -401,7 +401,7 @@ def visualize_mesh(mat, thd=[()], blocks=[], titles=[], clip_widget=False, TPB_m
             if bool(titles):
                 p.add_text(titles[i], font_size=20, position='lower_edge')
             if bool(TPB_mesh):
-                p.add_mesh(TPB_mesh, line_width=10, color='k')
+                p.add_mesh(TPB_mesh, line_width=10, color='r')
                 # for j in range(len(TPB_mesh)):
                     # p.add_mesh(TPB_mesh[j], line_width=3, color='k')
         p.add_bounding_box(line_width=1, color='black')
@@ -421,7 +421,6 @@ def visualize_mesh(mat, thd=[()], blocks=[], titles=[], clip_widget=False, TPB_m
     # p.camera.elevation = -45
     p.view_isometric()
     # p.save_graphic("img.eps",raster=False, painter=True)
-    # p.save('test.vtk')
     p.show()
     return None
     
