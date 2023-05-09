@@ -1,7 +1,8 @@
 def create_microstructure_plurigaussian(
         voxels, 
         vol_frac, 
-        sigma, 
+        d_ave, 
+        dx,
         mode = "normal", 
         seed = [], 
         gradient_factor = 1,
@@ -37,6 +38,18 @@ def create_microstructure_plurigaussian(
     from scipy.ndimage import gaussian_filter
 
     print("Generating microstructure...", end='')
+
+    # calculate sigma based on average diameter data
+    # This factor should be between 2 and 3
+    # it comes from the Gaussian probability density function 
+    C = 2.2     
+    if type(d_ave) == int or type(d_ave) == float:
+        sigma = d_ave/C/dx
+    elif type(d_ave) == list:
+        sigma = [None]*2
+        sigma[0] = d_ave[0]/C/dx
+        sigma[1] = d_ave[1]/C/dx
+
     if sum(vol_frac) - 1 > 1e-2:
         raise NameError('Error! sum of volume fractions must be equal to 1')
     else:
@@ -44,33 +57,23 @@ def create_microstructure_plurigaussian(
 
     dim=len(voxels)
     
-    Nx = voxels[0]-1
-    Ny = voxels[1]-1
+    Nx = voxels[0]-1 if periodic else voxels[0]
+    Ny = voxels[1]-1 if periodic else voxels[1]
     if dim==3:
-        Nz = voxels[2]-1
+        Nz = voxels[2]-1 if periodic else voxels[2]
     
     # create the random generator with specified seed
-    if len(seed) == 0:
-        rng_1 = np.random.default_rng()
-        rng_2 = np.random.default_rng()
-    else:
-        rng_1 = np.random.default_rng(seed=seed[0])
-        rng_2 = np.random.default_rng(seed=seed[1])
+    rng_1 = np.random.default_rng() if len(seed) == 0 else np.random.default_rng(seed=seed[0])
+    rng_2 = np.random.default_rng() if len(seed) == 0 else np.random.default_rng(seed=seed[1])
 
     # create two random matrices (two matrices are necessary
     # for three phase porous media)
     voxels = np.array(voxels)
-    rand_mat_1 = rng_1.random(size=tuple(voxels-1))
-    rand_mat_2 = rng_2.random(size=tuple(voxels-1))
-
-    # rand_mat_1 = np.random.normal(size=tuple(voxels-1))
-    # rand_mat_2 = np.random.normal(size=tuple(voxels-1))
+    rand_mat_1 = rng_1.random(size=(Nx,Ny,Nz))
+    rand_mat_2 = rng_2.random(size=(Nx,Ny,Nz))
 
     # create a tile matrix, according to the dimension
-    if periodic==True:
-        tile_mat = tuple(np.ones(dim,dtype=int)*3)
-    else:
-        tile_mat = tuple(np.ones(dim,dtype=int)*1)
+    tile_mat = tuple(np.ones(dim,dtype=int)*3) if periodic else tuple(np.ones(dim,dtype=int)*1)
 
     # apply the Gaussian filter on the tiled random matrices. tiled random matrices
     # are necessary to create a periodic phase matrix
@@ -79,16 +82,20 @@ def create_microstructure_plurigaussian(
     elif type(sigma) == list:
         sigma = np.array(sigma)
 
-    smooth_mat_1 = gaussian_filter(np.tile(rand_mat_1,tile_mat),\
-            sigma=sigma[0], mode='reflect')
-    smooth_mat_2 = gaussian_filter(np.tile(rand_mat_2,tile_mat),\
-            sigma=sigma[1], mode='reflect')
+    smooth_mat_1 = gaussian_filter(
+        np.tile(rand_mat_1,tile_mat),
+        sigma=sigma[0], 
+        mode='reflect')
+    smooth_mat_2 = gaussian_filter(
+        np.tile(rand_mat_2,tile_mat),
+        sigma=sigma[1], 
+        mode='reflect')
 
     # extract center matrices from the tiled smooth matrices
-    if dim==2 and periodic==True:
+    if dim==2 and periodic:
         smooth_mat_1 = smooth_mat_1[Nx:2*Nx+1,Ny:2*Ny+1]
         smooth_mat_2 = smooth_mat_2[Nx:2*Nx+1,Ny:2*Ny+1]
-    elif dim==3 and periodic==True:
+    elif dim==3 and periodic:
         smooth_mat_1 = smooth_mat_1[Nx:2*Nx+1,Ny:2*Ny+1,Nz:2*Nz+1]
         smooth_mat_2 = smooth_mat_2[Nx:2*Nx+1,Ny:2*Ny+1,Nz:2*Nz+1]
 
@@ -151,7 +158,7 @@ def create_microstructure_plurigaussian(
     if display==True and dim==2:
         import plotly.express as px
         fig = px.imshow(np.rot90(phase_mat))
-        fig.write_image("fig1.pdf")
+        # fig.write_image("fig1.pdf")
         fig.show()
     elif display==True and dim==3:
         # from postprocess import visualize_mesh
@@ -699,10 +706,12 @@ def create_microstructure(inputs, display=False):
     
     dx = inputs['microstructure']['dx']
     
+    d_ave = inputs['microstructure']['average_diameter']
+    
     voxels = [
-        int(inputs['microstructure']['length']['X']//dx), 
-        int(inputs['microstructure']['length']['Y']//dx),
-        int(inputs['microstructure']['length']['Z']//dx)]
+        int(inputs['microstructure']['length']['X']/dx), 
+        int(inputs['microstructure']['length']['Y']/dx),
+        int(inputs['microstructure']['length']['Z']/dx)]
     
     vol_frac = [
         inputs['microstructure']['volume_fractions']['pores'],
@@ -713,31 +722,30 @@ def create_microstructure(inputs, display=False):
 
     # create the entire domain
     if flag_lattice:
-        d_particle = inputs['microstructure']['lattice_geometry']['particle_diameter']
         domain = create_microstructure_lattice(
             vol_frac, 
             dx, 
             voxels, 
-            d_particle)
+            d_ave)
     
     elif flag_plurigaussian:
-        sig_gen = inputs['microstructure']['plurigaussian']['sig_gen']
         seed = inputs['microstructure']['plurigaussian']['seed']
         gradient_factor = inputs['microstructure']['plurigaussian']['gradient_factor']
         
         if flag_reduced:
-            Nx_extended = inputs['microstructure']['plurigaussian']['reduced_geometry']['Nx_extended']
-            Nx = voxels[0]
-            if Nx_extended < Nx:
+            Lx_extended = inputs['microstructure']['plurigaussian']['reduced_geometry']['Lx_extended']
+            if Lx_extended < inputs['microstructure']['length']['X']:
                 raise ValueError('Nx_extended must be larger than Nx')
-            voxels[0] = Nx_extended
+            voxels[0] = int(Lx_extended/dx)
 
         domain = create_microstructure_plurigaussian(
             voxels = voxels,
             vol_frac = vol_frac,
-            sigma = sig_gen,
+            d_ave = d_ave,
+            dx = dx,
             seed = seed,
-            gradient_factor = gradient_factor)
+            gradient_factor = gradient_factor,
+            periodic = False)
     
         if flag_reduced:
             domain = domain[:voxels[0],:,:]

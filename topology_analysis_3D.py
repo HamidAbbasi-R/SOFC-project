@@ -5,38 +5,37 @@ if __name__ == '__main__':
     inputs = {
         "microstructure": 
         {
-            "dx": 10e-09,
+            "dx": 40e-09,
+            "average_diameter": 0.4e-6,
             "volume_fractions": {
-                "pores": 0.44,
-                "Ni": 0.28,
-                "YSZ": 0.28
+                "pores": 0.33,
+                "Ni": 0.33,
+                "YSZ": 0.34
             },
             "length": {
                 "X": 5e-6,
-                "Y": 1e-6,
-                "Z": 1e-6
+                "Y": 5e-6,
+                "Z": 5e-6
             },
             "lattice_geometry": {
-                "flag": True,
-                "particle_diameter": 0.4e-06
+                "flag": False,
             },
             "plurigaussian": {
-                "flag": False,
-                "sig_gen": 3,
+                "flag": True,
                 "gradient_factor": 1,
-                "seed": [30,20],
+                "seed": [50,40],
                 "reduced_geometry": {
                     "flag": False,
-                    "Nx_extended": 1000
+                    "Lx_extended": 10e-6
                 }
             },
-            "infiltration_loading": 0.01
+            "infiltration_loading": 0.00
         }}
     
     # tpl.compare_circle_circumference(5,100)
     sigma_seg = 1.5   # Segmegation parameter
     show_microstructure = False
-    show_TPB = True
+    show_TPB = False
     show_segmentation = True
     show_histograms = True
 
@@ -75,20 +74,23 @@ if __name__ == '__main__':
     d_avg[2] = np.mean(radius[2])*2    # [μm]
 
     # print results
-    N = [inputs['microstructure']['Nx'], inputs['microstructure']['Ny'], inputs['microstructure']['Nz']]
+    L = [
+        inputs['microstructure']['length']['X'], 
+        inputs['microstructure']['length']['Y'], 
+        inputs['microstructure']['length']['Z']]
     print(f'd_avg = {d_avg[0]:.2}, {d_avg[1]:.2}, {d_avg[2]:.2} [μm]')
     print(f'TPB_density = {TPB_density:.4} [μm^-2]')
-    print(f'Length to pore/particle diameter ratio = {N[0]*dx*1e6/d_avg[0]:.2f}, {N[1]*dx*1e6/d_avg[1]:.2f}, {N[2]*dx*1e6/d_avg[2]:.2f}')
+    print(f'Length to pore/particle diameter ratio = {L[0]*1e6/d_avg[0]:.2f}, {L[1]*1e6/d_avg[1]:.2f}, {L[2]*1e6/d_avg[2]:.2f}')
 
     if show_histograms:
         import plotly.graph_objects as go
-        fig = go.Figure()
         max0 = np.max(volumes[0])
         max1 = np.max(volumes[1])
         max2 = np.max(volumes[2])
         maxt = np.max([max0,max1,max2])
-        Nhist = 100
+        Nhist = 50
 
+        fig = go.Figure()
         fig.add_trace(go.Histogram(
             x=2*radius[0][:,0], 
             xbins=dict( # bins used for histogram
