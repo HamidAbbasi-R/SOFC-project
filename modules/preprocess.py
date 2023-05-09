@@ -309,12 +309,12 @@ def create_SOLE_individual(inputs, bc_dict, indices, masks_dict):
     cond_ion = 3.34e4 * np.exp(-10350/inputs['operating_conditions']['T'])    # [S/m]
     K = [cond_H2, cond_el, cond_ion] 
 
-    N = [
-        inputs['microstructure']['voxels']['X'], 
-        inputs['microstructure']['voxels']['Y'], 
-        inputs['microstructure']['voxels']['Z']]
-
     dx = inputs['microstructure']['dx']
+
+    N = [
+        inputs['microstructure']['length']['X']//dx, 
+        inputs['microstructure']['length']['Y']//dx, 
+        inputs['microstructure']['length']['Z']//dx]
 
     J = [None]*3
     rhs = [None]*3
@@ -524,7 +524,7 @@ def initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict, i
         phi[p] = np.ones(shape = L, dtype = float) * init_cond[p]
         
     if isMi:
-        N_y = inputs['microstructure']['voxels']['Y']
+        N_y = inputs['microstructure']['length']['Y']//inputs['microstructure']['dx']
         j_seg = [N_y//M_instances*i for i in range(M_instances)]
         j_seg.append(N_y)
         j_seg = np.array(j_seg)

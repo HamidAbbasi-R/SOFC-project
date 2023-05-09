@@ -11,28 +11,29 @@ if __name__ == '__main__':
                 "Ni": 0.28,
                 "YSZ": 0.28
             },
-            "voxels": {
-                "X": 100,
-                "Y": 100,
-                "Z": 100
+            "length": {
+                "X": 5e-6,
+                "Y": 1e-6,
+                "Z": 1e-6
             },
             "lattice_geometry": {
-                "flag": False,
+                "flag": True,
                 "particle_diameter": 0.4e-06
             },
-            "reduced_geometry": {
-                "flag": False,
-                "Nx_extended": 1000
-            },
             "plurigaussian": {
-                "flag": True,
+                "flag": False,
                 "sig_gen": 3,
                 "gradient_factor": 1,
-                "seed": [30,20]
+                "seed": [30,20],
+                "reduced_geometry": {
+                    "flag": False,
+                    "Nx_extended": 1000
+                }
             },
-            "infiltration_loading": 0.00
+            "infiltration_loading": 0.01
         }}
     
+    # tpl.compare_circle_circumference(5,100)
     sigma_seg = 1.5   # Segmegation parameter
     show_microstructure = False
     show_TPB = True

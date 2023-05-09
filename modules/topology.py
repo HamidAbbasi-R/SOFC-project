@@ -94,9 +94,9 @@ def create_microstructure_plurigaussian(
 
     # create different modes of microstructure with thresholding the smooth matrices
     if mode=="normal":
-        if len(vol_frac)==2:    # phsaes: 1-2-3
-            phase_mat = np.zeros_like(smooth_mat_1, dtype=int)+3
-            if gradient_factor>1:
+        if dim==3:
+            if len(vol_frac)==2:    # phsaes: 1-2-3
+                phase_mat = np.zeros_like(smooth_mat_1, dtype=int)+3
                 # for gradient three-phase microstructures it is assumed that pore phase has 
                 # a uniform distribution, but volume fraction of Ni and YSZ changes
                 vf_p = vol_frac[0]
@@ -109,21 +109,38 @@ def create_microstructure_plurigaussian(
                     b = np.quantile(smooth_mat_2[i,:,:][smooth_mat_1[i,:,:] >= a].flatten(), q=vf_Ni[i]/(1-vf_p))
                     phase_mat[i,:,:][smooth_mat_1[i,:,:] < a] = 1
                     phase_mat[i,:,:][np.logical_and(smooth_mat_2[i,:,:] < b, smooth_mat_1[i,:,:] > a)] = 2
-            else:
-                a = np.quantile(smooth_mat_1.flatten(), q=vol_frac[0])
-                b = np.quantile(smooth_mat_2[smooth_mat_1 >= a].flatten(), q=vol_frac[1]/(1-vol_frac[0]))
-                phase_mat[smooth_mat_1 < a] = 1        
-                phase_mat[np.logical_and(smooth_mat_2 < b, smooth_mat_1 > a)] = 2
-        if len(vol_frac)==1:    # phases: 0-1
-            phase_mat = np.zeros_like(smooth_mat_1, dtype=int)
-            if gradient_factor:
-                vol_frac = np.linspace(vol_frac[0]/2, (1+vol_frac[0])/2, voxels[0])
+            if len(vol_frac)==1:    # phases: 0-1
+                phase_mat = np.zeros_like(smooth_mat_1, dtype=int)
+                vf_min = vol_frac[0] / gradient_factor
+                vf_max = vol_frac[0] + vol_frac[0] / gradient_factor * (gradient_factor - 1)
+                vf = np.linspace(vf_min, vf_max, voxels[0])
                 for i in range(voxels[0]):
-                    a = np.quantile(smooth_mat_1[i,:,:].flatten(), q=vol_frac[i])
+                    a = np.quantile(smooth_mat_1[i,:,:].flatten(), q=vf[i])
                     phase_mat[i,:,:][smooth_mat_1[i,:,:] < a] = 1
-            else:
-                a = np.quantile(smooth_mat_1.flatten(), q=vol_frac)
-                phase_mat[smooth_mat_1 < a] = 1
+        elif dim==2:
+            if len(vol_frac)==2: # phases 1-2-3
+                phase_mat = np.zeros_like(smooth_mat_1, dtype=int)+3
+                # for gradient three-phase microstructures it is assumed that pore phase has    
+                # a uniform distribution, but volume fraction of Ni and YSZ changes
+                vf_p = vol_frac[0]
+                vf_Ni_nom = vol_frac[1]
+                vf_Ni_min = vf_Ni_nom / gradient_factor
+                vf_Ni_max = vf_Ni_nom + vf_Ni_nom / gradient_factor * (gradient_factor - 1)
+                vf_Ni = np.linspace(vf_Ni_min, vf_Ni_max, voxels[0])
+                for i in range(voxels[0]):
+                    a = np.quantile(smooth_mat_1[i,:].flatten(), q=vf_p)
+                    b = np.quantile(smooth_mat_2[i,:][smooth_mat_1[i,:] >= a].flatten(), q=vf_Ni[i]/(1-vf_p))
+                    phase_mat[i,:][smooth_mat_1[i,:] < a] = 1
+                    phase_mat[i,:][np.logical_and(smooth_mat_2[i,:] < b, smooth_mat_1[i,:] > a)] = 2
+            if len(vol_frac)==1: # phases 0-1
+                phase_mat = np.zeros_like(smooth_mat_1, dtype=int)
+                vf_min = vol_frac[0] / gradient_factor
+                vf_max = vol_frac[0] + vol_frac[0] / gradient_factor * (gradient_factor - 1)
+                vf = np.linspace(vf_min, vf_max, voxels[0])
+                for i in range(voxels[0]):
+                    a = np.quantile(smooth_mat_1[i,:].flatten(), q=vf[i])
+                    phase_mat[i,:][smooth_mat_1[i,:] < a] = 1
+                    
     elif mode=="thin film":
         a = np.quantile(smooth_mat_1.flatten(), q=vol_frac[0])
         b = np.quantile(smooth_mat_1.flatten(), q=1-vol_frac[1])
@@ -677,15 +694,15 @@ def remove_edges(phi):
     
 def create_microstructure(inputs, display=False):
     flag_lattice = inputs['microstructure']['lattice_geometry']['flag']
-    flag_reduced = inputs['microstructure']['reduced_geometry']['flag']
     flag_plurigaussian = inputs['microstructure']['plurigaussian']['flag']
+    flag_reduced = inputs['microstructure']['plurigaussian']['reduced_geometry']['flag']
     
     dx = inputs['microstructure']['dx']
     
     voxels = [
-        inputs['microstructure']['voxels']['X'], 
-        inputs['microstructure']['voxels']['Y'],
-        inputs['microstructure']['voxels']['Z']]
+        int(inputs['microstructure']['length']['X']//dx), 
+        int(inputs['microstructure']['length']['Y']//dx),
+        int(inputs['microstructure']['length']['Z']//dx)]
     
     vol_frac = [
         inputs['microstructure']['volume_fractions']['pores'],
@@ -709,7 +726,7 @@ def create_microstructure(inputs, display=False):
         gradient_factor = inputs['microstructure']['plurigaussian']['gradient_factor']
         
         if flag_reduced:
-            Nx_extended = inputs['microstructure']['reduced_geometry']['Nx_extended']
+            Nx_extended = inputs['microstructure']['plurigaussian']['reduced_geometry']['Nx_extended']
             Nx = voxels[0]
             if Nx_extended < Nx:
                 raise ValueError('Nx_extended must be larger than Nx')
@@ -729,7 +746,7 @@ def create_microstructure(inputs, display=False):
 
     if display:
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(2,3)], save=True)
+        vm([domain], [(2,3)])
 
     return domain
 
@@ -1038,7 +1055,6 @@ def infiltration(phase_mat, loading):
     return phase_mat
 
 def create_microstructure_lattice(vol_frac, dx, voxels, d_particle):
-    # from modules.postprocess import visualize_mesh as vm
     import numpy as np
     from scipy.optimize import fsolve
 
@@ -1083,11 +1099,119 @@ def create_microstructure_lattice(vol_frac, dx, voxels, d_particle):
     # create the entire microstructure by tiling a single lattice
     phase_mat = np.tile(phase_mat_lat, (X_tiles,Y_tiles,Z_tiles)).astype(int)
 
-    # roll the lattice by half the size of a single lattice in all directions
+    # roll the entire lattice by half the size of a single lattice in all directions
+    # This is done to make sure that all TPB are captured in the simulation domain
     phase_mat = np.roll(phase_mat, N_lat//2, axis=0)
     phase_mat = np.roll(phase_mat, N_lat//2, axis=1)
     phase_mat = np.roll(phase_mat, N_lat//2, axis=2)
 
     # phase numbers are assigned as follows:
     phase_mat += 1      # pore=1, Ni=2, YSZ=3
+
+    # analytical TPB density
+    TPB_density = 1/2 * np.pi * np.sqrt(2*f0 - f0**2) / (1-f0)**3 * r / r**3 # [m/m3]
+    TPB_density /= 1e12 # [µm/µm3]
     return phase_mat
+
+def compare_circle_circumference(lower_bound, upper_bound):
+    import numpy as np
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    import plotly.express as px
+    import pandas as pd
+
+    DIAMETER = np.arange(lower_bound,upper_bound)
+    length_voxel = np.zeros(shape=DIAMETER.shape)
+    length_real = np.zeros(shape=DIAMETER.shape)
+
+    for i,diameter in enumerate(DIAMETER):
+        dx = 1
+        Npic =int(diameter*1.4)
+        pic = np.zeros((Npic,Npic))
+        dist_center_mat = np.linalg.norm(
+            np.indices((Npic,Npic), dtype=int) -
+            np.array([Npic//2,Npic//2]).reshape((2,1,1)), axis=0)
+        
+        pic[dist_center_mat < diameter//2] = 1
+
+        # create four sliced 2D matrices in each i index
+        mat_1_X = pic[:  , :-1].flatten()
+        mat_2_X = pic[:  , 1: ].flatten()
+        mat_1_Y = pic[:-1, :  ].flatten()
+        mat_2_Y = pic[1: , :  ].flatten()
+
+        # concatanate the sliced matrices
+        mat_cumulative_X = np.stack((mat_1_X,mat_2_X), axis=-1)
+        mat_cumulative_Y = np.stack((mat_1_Y,mat_2_Y), axis=-1)
+
+        # find the number of unique phases in each neighborhood of size (2,2)
+        sorted_X = np.sort(mat_cumulative_X,axis=1)
+        unique_phases_X = (sorted_X[:,1:] != sorted_X[:,:-1]).sum(axis=1)+1
+        unique_phases_X -= np.sum(np.isnan(sorted_X), axis=1)
+
+        sorted_Y = np.sort(mat_cumulative_Y,axis=1)
+        unique_phases_Y = (sorted_Y[:,1:] != sorted_Y[:,:-1]).sum(axis=1)+1
+        unique_phases_Y -= np.sum(np.isnan(sorted_Y), axis=1)
+
+        # find the locaiton of DPBs, where two phases are present in a 
+        # (1,2) neighborhood (unique_phases==2).
+        DPBs_flatten_X = np.zeros_like(mat_1_X).astype(bool)
+        DPBs_flatten_X[unique_phases_X==2] = True
+
+        DPBs_flatten_Y = np.zeros_like(mat_1_Y).astype(bool)
+        DPBs_flatten_Y[unique_phases_Y==2] = True
+
+        # resphase the flattened mask matrix (denoting the location of TPBs) to 2D
+        DPBs_plane_X = DPBs_flatten_X.reshape((Npic,Npic-1))
+        DPBs_plane_Y = DPBs_flatten_Y.reshape((Npic-1,Npic))
+
+        length_voxel[i] = (np.sum(DPBs_plane_X) + np.sum(DPBs_plane_Y)) * dx
+        length_real[i] = np.pi * diameter * dx
+
+    ratio = length_real/length_voxel
+    ratio[1:] = (ratio[1:] + ratio[:-1])/2
+    df = pd.DataFrame({
+        'diameter [pixels]': DIAMETER, 
+        'Circle circumference, voxel)': length_voxel, 
+        'Circle circumference, real': length_real,
+        'ratio (real to voxel)': ratio})
+    
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    trace1 = go.Scatter(x=df['diameter [pixels]'], y=df['Circle circumference, voxel)'], name='Circle circumference, voxel')
+    trace2 = go.Scatter(x=df['diameter [pixels]'], y=df['Circle circumference, real'], name='Circle circumference, real')
+    trace3 = go.Scatter(x=df['diameter [pixels]'], y=df['ratio (real to voxel)'], name='ratio (real to voxel)')
+    fig.add_trace(trace1, secondary_y=False)
+    fig.add_trace(trace2, secondary_y=False)
+    fig.add_trace(trace3, secondary_y=True)
+    fig.update_xaxes(title_text='diameter [pixels]')
+    fig.update_yaxes(title_text="Circle circumference [µm]", secondary_y=False)
+    fig.update_yaxes(title_text="ratio (real to voxel)", secondary_y=True)
+    fig.show()
+    return None
+
+def PDF_analysis(scale, probability_value):
+    import numpy as np
+    from scipy.stats import norm
+    import scipy.integrate as integrate
+    from scipy.optimize import fsolve
+    import plotly.graph_objects as go
+
+    distribution_function = lambda x: norm.pdf(x, loc=0, scale=scale)
+    probability = lambda x1: integrate.quad(distribution_function, -x1, x1)[0] - probability_value
+    
+    root = fsolve(probability, 3*scale)[0]
+
+    step = 0.001
+    whole_x = np.arange(-3*root, 3*root, step)
+    whole_y = list(map(distribution_function, whole_x))
+
+    needed_x = np.arange(-root, root, step)
+    needed_y = list(map(distribution_function, needed_x))
+
+    fig = go.Figure()
+    trace1 = go.Scatter(x=whole_x, y=whole_y, mode='lines', name='PDF')
+    trace2 = go.Scatter(x=needed_x, y=needed_y, mode='lines', fill='tozeroy', name='Needed area')
+    fig.add_trace(trace1)
+    fig.add_trace(trace2)
+    fig.show()
+    return root
