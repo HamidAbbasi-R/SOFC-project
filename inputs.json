@@ -12,29 +12,28 @@
 
     "microstructure": 
     {
-        "dx": 10e-09,
+        "dx": 25e-09,
+        "average_diameter": 0.4e-06,
         "volume_fractions": {
-            "pores": 0.44,
-            "Ni": 0.28,
-            "YSZ": 0.28
+            "pores": 0.5,
+            "Ni": 0.25,
+            "YSZ": 0.25
         },
         "length": {
-            "X": 1e-6,
-            "Y": 1e-6,
-            "Z": 1e-6
+            "X": 5e-6,
+            "Y": 5e-6,
+            "Z": 5e-6
         },
         "lattice_geometry": {
-            "flag": true,
-            "particle_diameter": 0.4e-06
+            "flag": false
         },
         "plurigaussian": {
-            "flag": false,
-            "sig_gen": 3,
+            "flag": true,
             "gradient_factor": 1,
             "seed": [30,20],
             "reduced_geometry": {
                 "flag": false,
-                "Nx_extended": 1000
+                "Lx_extended": 10e-6
             }
         },
         "infiltration_loading": 0.00
