@@ -17,12 +17,6 @@ def Newton_loop_individual(inputs, J, rhs, phi, indices, field_functions, masks_
     import numpy as np
     from scipy.sparse import linalg
 
-    dx = inputs['microstructure']['dx']
-    N = [
-        inputs['microstructure']['voxels']['X'], 
-        inputs['microstructure']['voxels']['Y'], 
-        inputs['microstructure']['voxels']['Z']]
-
     prev_iters = len(residuals[0])
     iter = prev_iters
     ds = masks_dict['ds']
