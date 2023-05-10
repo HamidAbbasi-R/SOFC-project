@@ -513,9 +513,13 @@ def initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict, i
     phi = [[]]*3
     ds = masks_dict['ds']
 
+    # using the same initial condition for ion and electron
+    # might speed up the convergence
     init_cond = [bc_dict[0]['West'][1], 
                  bc_dict[1]['West'][1], 
-                 bc_dict[2]['East'][1]]
+                #  bc_dict[2]['East'][1],
+                bc_dict[1]['West'][1]
+                ]
 
     # if M_instances is None:
     for p in [0,1,2]:
