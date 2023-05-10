@@ -31,7 +31,7 @@ def load_case_individual(case_name):
     for p in [0,1,2]:
         if inputs['solver_options']['ion_only'] and p!=2:
             continue
-        J[p] = load_npz(dir + 'case' + inputs['file_options']['id'] + f'_sparse_{p}.npz').tolil()
+        J[p] = load_npz(dir + 'case_' + inputs['file_options']['id'] + f'_sparse_{p}.npz').tolil()
 
     print('Done!')
     return inputs, indices, J, rhs, field_functions, ds, sum_nb, TPB_dict, bc_dict
