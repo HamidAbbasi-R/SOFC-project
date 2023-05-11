@@ -409,6 +409,7 @@ def visualize_mesh(mat, thd=[()], blocks=[], titles=[], clip_widget=False, TPB_m
     # p.camera.elevation = -45
     p.view_isometric()
     # p.save_graphic("img.eps",raster=False, painter=True)
+    # p.export_html("img.html")
     p.show()
     return None
     
