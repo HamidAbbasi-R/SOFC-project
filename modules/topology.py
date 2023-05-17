@@ -772,7 +772,7 @@ def topological_operations(inputs, domain, show_TPB=False):
     domain = remove_thin_boundaries(domain.astype(float))
     # extract the domain that should be solved. ds is short for Domain for Solver.
     # when periodic boundary condition is used, percolation analysis should not be done.
-    # domain, _, _ = percolation_analysis(domain)
+    domain, _, _ = percolation_analysis(domain)
 
     # measure the triple phase boundary and create a mask for source term
     dx = inputs['microstructure']['dx']
@@ -790,7 +790,7 @@ def topological_operations(inputs, domain, show_TPB=False):
         import pyvista as pv
         TPB_mesh = pv.PolyData(vertices, lines=lines)
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(2,3)], clip_widget=False, TPB_mesh=TPB_mesh)
+        vm([domain], [(2,3)], TPB_mesh=TPB_mesh, animation=False)
 
     # tortuosity_calculator(domain)
     return domain, TPB_dict
