@@ -5,59 +5,66 @@ import os
 import itertools
 
 # Different configurations
-folder = 'D42 - 0.68'
+folder = 'D39 - 0.93'
 
-Nx = [
-    # 100,
-    # 200,
-    200,
-    # 500,
-    # 700,
-    # 1000,
-    ]
+# props = [
+#     ['dx', [30]],
+#     ['d', [0.4]],
+#     ['vfp', [44]],
+#     ['lx', [50]],
+#     ['V', [0.05]],
+# ]
 
-Nyz = [
-    100,
-    ] * len(Nx)
-
-dx = [
-    90,
-    ] * len(Nx)
-
-V = [
-    0.05,
-    ]
+props = [
+    ['Nx', [300]],
+    ['Nyz', [100]],
+    ['dx', [100]],
+    ['V', [0.001,0.005,0.01,0.03,0.05]],
+]
 
 # Create file names
 parameter = 'Ia_A'
-show_max_min = True
+show_max_min = False
 save_svg = False
 
-filename = [None]*len(Nx)
-filepath = [None]*len(Nx)
-df = [None]*len(Nx)
-max_x = [None]*len(Nx)
-trace = [None]*len(Nx)
+length_props = [None] * len(props)
+for i in range(len(props)):
+    length_props[i] = len(props[i][1])
+n_curves = max(length_props)
+
+for i in range(len(props)):
+    if len(props[i][1]) < n_curves: props[i][1] *= n_curves
+        
+filename = [None]*n_curves
+filepath = [None]*n_curves
+df = [None]*n_curves
+max_x = [None]*n_curves
+trace = [None]*n_curves
 cwd = os.getcwd()
 col_pal = px.colors.qualitative.Bold
 col_pal_iterator = itertools.cycle(col_pal) 
-color = [None]*len(Nx)
-for i in range(len(Nx)):
-    Vstr = str(V[i])
-    filename[i] =  parameter + f'_Nx{Nx[i]}_Nyz{Nyz[i]}_dx{dx[i]}_V{Vstr[2:]}.csv'
+color = [None]*n_curves
+for i in range(n_curves):
+    name_str = ''
+    for j in range(len(props)):
+        name_str +=  '_' + props[j][0] + str(props[j][1][i])
+
+    if folder == 'lattice': name_str = '_lat' + name_str
+    name_str = parameter + name_str + '.csv'
+    filename[i] = name_str
     filepath[i] = os.path.join(cwd, 'Binary files', '1D plots', 'csv', folder, filename[i])
     df[i] = pd.read_csv(filepath[i])
     max_x[i] = df[i].iloc[-1,0] + df[i].iloc[1,0] - df[i].iloc[0,0]
 
 if len(set(max_x)) > 1:
-    for i in range(len(Nx)): df[i].iloc[:,0] += max(max_x) - max_x[i]
+    for i in range(n_curves): df[i].iloc[:,0] += max(max_x) - max_x[i]
 
-for i in range(len(Nx)):
+for i in range(n_curves):
     color[i] = next(col_pal_iterator)
     trace[i] = go.Scatter(x=df[i].iloc[:,0], y=df[i].iloc[:,1], name=filename[i][:-4], line=dict(color=color[i], width=4))
 
 if parameter == 'Vio' and show_max_min:
-    for i in range(len(Nx)):
+    for i in range(n_curves):
         trace.append(go.Scatter(x=df[i].iloc[:,0], y=df[i].iloc[:,2],
                                     line=dict(width=0),
                                     showlegend=False))
