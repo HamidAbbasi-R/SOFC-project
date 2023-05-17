@@ -100,13 +100,7 @@ def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
         if csv_flag: create_csv_output(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, f'Vio_{inputs["file_options"]["id"]}')
         if plot1D_flag: plot_with_continuous_error(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Ion potential (V)', title=f'Vio_{inputs["file_options"]["id"]}', save_img=img_flag)
 
-    if plots['Ia_1D'] and (plot1D_flag or csv_flag):
-        # Ia_V_avg = np.zeros(N[0])
-        # Ia_V_max = np.zeros(N[0])
-        # Ia_V_min = np.zeros(N[0])
-        # Ia_V_c_down = np.zeros(N[0])
-        # Ia_V_c_up = np.zeros(N[0])
-
+    if True:
         Ia_A_avg = np.zeros(N[0])
 
         j_buch = 0         # area specific current density as defined in eq 21 by Buchaniec et al. 2019 [A/m2]
@@ -115,34 +109,17 @@ def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
         area = N[1]*N[2]*dx**2 # [m2]
         for i in range(N[0]):
             if i == 0 or i == N[0]-1:
-                # Ia[i] = np.nan
-                # Ia_V_avg[i] = np.nan
-                # Ia_V_max[i] = np.nan
-                # Ia_V_min[i] = np.nan
-                # Ia_V_c_down[i], Ia_V_c_up[i] = np.nan, np.nan
-
                 Ia_A_avg[i] = np.nan
             else:
                 a = dense_Ia[i, :, :][~np.isnan(dense_Ia[i, :, :])]     # [A/m3]
 
                 j_buch = j_buch + (np.sum(a))*dx
                 j_prok = j_prok + (np.sum(a))*dx**3
-
-                # Ia[i] = np.average(a)*len(a)*dx**3  # [A]
-
-                # Ia_V_avg[i]  = np.average(a)
-                # Ia_V_max[i]  = np.max(a)
-                # Ia_V_min[i]  = np.min(a)
-                # Ia_V_c_down[i], Ia_V_c_up[i] = mean_confidence_interval(a)
                 
                 Ia_A_avg[i] = j_prok/area # [A/m2]
 
-        # if csv_flag: create_csv_output(x, Ia, title=f'Ia_{inputs["file_options"]["id"]}')
-        # if csv_flag: create_csv_output(x, Ia_V_avg, Ia_V_min, Ia_V_max, Ia_V_c_down, Ia_V_c_up, f'Ia_V_{inputs["file_options"]["id"]}')
         if csv_flag: create_csv_output(x, Ia_A_avg, title=f'Ia_A_{inputs["file_options"]["id"]}')
-        # if plot1D_flag: plot_with_continuous_error(x, Ia, x_title='Distance from anode (µm)', y_title='Current (A)', title=f'Ia_{inputs["file_options"]["id"]}', save_img=save_img)
         if plot1D_flag: plot_with_continuous_error(x, Ia_A_avg, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title=f'Ia_A_{inputs["file_options"]["id"]}', save_img=img_flag)
-        # if plot1D_flag: plot_with_continuous_error(x, Ia_V_avg, Ia_V_min, Ia_V_max, Ia_V_c_down, Ia_V_c_up, x_title='Distance from anode (µm)', y_title='Volumetric current density (A/m3)', title=f'Ia_V_{inputs["file_options"]["id"]}', save_img=save_img)
 
     if inputs['output_options']['show_3D_plots']:
         if plots['cH2_3D'] and plot3D_flag:
@@ -188,6 +165,8 @@ def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
             clip_widget = False, 
             TPB_mesh = TPB_mesh,
             log_scale = log_scale)
+    
+    return Ia_A_avg
 
 def create_TPB_field_variable_individual(phi_dense, indices, masks_dict, func):
     # visualize a function on the TPB
@@ -342,7 +321,15 @@ def save_image(phase_mat):
         str_1 = "images\phase_1."+f"{k:03}"
         imageio.imwrite(str_1, phase_1[:,:,k], format='png')     
 
-def visualize_mesh(mat, thd=[()], blocks=[], titles=[], clip_widget=False, TPB_mesh=[], log_scale=None):
+def visualize_mesh(
+        mat, 
+        thd=[()], 
+        blocks=[], 
+        titles=[], 
+        clip_widget=False, 
+        TPB_mesh=[], 
+        log_scale=None, 
+        animation=False):
     """
     Visualizes the mesh via PyVista.
     inputs:
@@ -403,14 +390,21 @@ def visualize_mesh(mat, thd=[()], blocks=[], titles=[], clip_widget=False, TPB_m
     #     p.add_mesh(TPB_mesh, line_width=3, color='k')
         
     p.link_views()
-    # p.camera_position = 'xz'
-    # p.camera.azimuth = 90
-    # p.camera.roll += 45
-    # p.camera.elevation = -45
     p.view_isometric()
     # p.save_graphic("img.eps",raster=False, painter=True)
     # p.export_html("img.html")
-    p.show()
+    if animation:
+        p.open_movie("animation.mp4")
+        frames = 100
+        p.camera_position = 'xz'
+        p.camera.elevation = +45
+        for angle in np.linspace(0, 360, frames):
+            p.camera.azimuth = angle
+            # p.camera.roll += 1
+            p.write_frame()
+        p.close()
+    else:
+        p.show()
     return None
     
 def visualize_network(volumes, centroids, M=1):
