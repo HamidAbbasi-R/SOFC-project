@@ -66,16 +66,17 @@ def sourcefunc_calc(inputs, TPB_dict):
     # Tseronis et al. 2012 model for anode current density
     n = 2       # number of electrons transferred per reaction
     if inputs['solver_options']['ion_only']:
-        eta_a_con = Ru*T/n/F*log(pH2_inlet/pH2_b*pH2O_b/pH2O_inlet)         # anode concentration overpotential [V]
+        eta_a_con = Ru*T/n/F*np.log(pH2_inlet/pH2_b*pH2O_b/pH2O_inlet)         # anode concentration overpotential [V]
         if eta_a_con > (Vel_b - Vio_b):
-            raise ValueError('Concentration overpotential is greater than the sum of the electrode overpotentials.')
+            raise ValueError('Concentration overpotential is greater than the difference between ion and electron potentials.')
     else:
         eta_a_con = Ru*T/n/F*log(pH2_inlet/pH2*pH2O/pH2O_inlet)         # anode concentration overpotential [V]
         
 
     eta_a_act = Vel - Vio - eta_a_con                      # anode activation overpotential [V]
-    Ia = I0a*(exp( n*   aa * F * eta_a_act /Ru/T)
-             -exp(-n*(1-aa)* F * eta_a_act /Ru/T))               # anode current density [A/m^3]
+    Ia = I0a*(
+        exp( n*   aa * F * eta_a_act /Ru/T)-
+        exp(-n*(1-aa)* F * eta_a_act /Ru/T))               # anode current density [A/m^3]
 
     # Shearing et al. 2010 model for anode current density
     # Voe = 1.23 - 2.304e-4*(T-298.15)        # standard potential [V]
