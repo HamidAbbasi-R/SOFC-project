@@ -1,4 +1,5 @@
 if __name__ == '__main__':
+# def solve_individual_systems():
     """
     This function does the following:
     1. Reads the input file
@@ -33,7 +34,7 @@ if __name__ == '__main__':
 
     if file_options['new_case']:
         domain = tpl.create_microstructure(inputs, display=False)
-        domain, TPB_dict = tpl.topological_operations(inputs, domain, show_TPB=False)
+        domain, TPB_dict = tpl.topological_operations(inputs, domain, show_TPB=True)
         field_functions, _, bc_dict = prep.sourcefunc_calc(inputs, TPB_dict)
         masks_dict, indices =prep.get_indices_all(inputs, domain, TPB_dict)
         J, rhs, sum_nb = prep.create_SOLE_individual(inputs, bc_dict, indices, masks_dict)
@@ -80,28 +81,24 @@ if __name__ == '__main__':
     phi[1] = phi[1] + scale_ion
     phi[2] = phi[2] + scale_ion
     dense_m = post.create_dense_matrices(phi, masks_dict, indices, field_functions)
-
-    if (inputs['output_options']['show_3D_plots'] or 
-        inputs['output_options']['show_1D_plots'] or 
-        inputs['output_options']['csv_output']):
         
-        post.visualize_3D_matrix(
-            inputs, dense_m, TPB_dict,
-            plots = {
-                'cH2_1D':       False,
-                'Vel_1D':       False,
-                'Vio_1D':       True,
-                'Ia_1D':        True,
-                'eta_act_1D':   False,
-                'eta_con_1D':   False,
-                'cH2_3D':       False,
-                'Vel_3D':       False,
-                'Vio_3D':       True,
-                'Ia_3D':        True,
-                'eta_act_3D':   False,
-                'eta_con_3D':   False,
-            })
+    Ia_A_m = post.visualize_3D_matrix(
+        inputs, dense_m, TPB_dict,
+        plots = {
+            'cH2_1D':       False,
+            'Vel_1D':       False,
+            'Vio_1D':       True,
+            'Ia_1D':        True,
+            'eta_act_1D':   False,
+            'eta_con_1D':   False,
+            'cH2_3D':       False,
+            'Vel_3D':       False,
+            'Vio_3D':       True,
+            'Ia_3D':        True,
+            'eta_act_3D':   False,
+            'eta_con_3D':   False,
+        })
         
     end = time.time()
     print('Time elapsed: ', end - start)
-    # return dense_m['Ia']
+    # return Ia_A_m[-2]
