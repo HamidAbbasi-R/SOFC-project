@@ -391,16 +391,23 @@ def visualize_mesh(
         
     p.link_views()
     p.view_isometric()
+    # p.enable_parallel_projection()
+    # p.camera.zoom(2)
     # p.save_graphic("img.eps",raster=False, painter=True)
     # p.export_html("img.html")
     if animation:
         p.open_movie("animation.mp4")
-        frames = 100
+        frames = 300
         p.camera_position = 'xz'
-        p.camera.elevation = +45
-        for angle in np.linspace(0, 360, frames):
-            p.camera.azimuth = angle
-            # p.camera.roll += 1
+        p.camera.elevation = 0
+        p.camera.zoom(0.5)
+        # p.camera.focal_point = (-20.0, -20.0, -20.0)
+        # p.camera.thickness = 5000
+        # p.camera.clipping_range = (1e-2, 1e2)
+        for value in np.linspace(0, 1, frames):
+            # p.camera.azimuth = value * 360
+            p.camera.elevation = value * 70
+            p.camera.zoom(1.01)
             p.write_frame()
         p.close()
     else:
