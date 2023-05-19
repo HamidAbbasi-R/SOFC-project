@@ -6,5 +6,4 @@
 module load apps/binapps/anaconda3/2021.11
 
 # The actual job
-id = $(printf "%03d" ${SGE_TASK_ID})
-python -c "from individual_systems import solve_individual_systems as sis; sis(${id})"
+python -c "from individual_systems import solve_individual_systems as sis; sis(${SGE_TASK_ID})"
