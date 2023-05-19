@@ -1,5 +1,5 @@
-if __name__ == '__main__':
-# def solve_individual_systems():
+# if __name__ == '__main__':
+def solve_individual_systems(id):
     """
     This function does the following:
     1. Reads the input file
@@ -23,7 +23,9 @@ if __name__ == '__main__':
     from modules import postprocess as post
     from modules import solve as slv
 
-    f = open('inputs.json')
+    id_str = str(id).zfill(3)
+    input_str = 'input files/inputs_' + id_str + '.json'
+    f = open(input_str)
     inputs = json.load(f)
     file_options = inputs['file_options']
 
@@ -34,14 +36,14 @@ if __name__ == '__main__':
 
     if file_options['new_case']:
         domain = tpl.create_microstructure(inputs, display=False)
-        domain, TPB_dict = tpl.topological_operations(inputs, domain, show_TPB=True)
+        domain, TPB_dict = tpl.topological_operations(inputs, domain, show_TPB=False)
         field_functions, _, bc_dict = prep.sourcefunc_calc(inputs, TPB_dict)
         masks_dict, indices =prep.get_indices_all(inputs, domain, TPB_dict)
         J, rhs, sum_nb = prep.create_SOLE_individual(inputs, bc_dict, indices, masks_dict)
         if file_options['save_case']:
             fop.save_case_individual(f'case_{file_options["id"]}',
                 inputs, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict)
-        phi, residuals = prep.initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict, inputs['is_multiple_instances'], inputs['M_instances'], inputs['scaling_factor'])
+        phi, residuals = prep.initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict)
 
     elif file_options['load_case']:
         inputs_old, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict = fop.load_case_individual(file_options['case_id'])
@@ -53,7 +55,7 @@ if __name__ == '__main__':
             if inputs['file_options']['save_case']:
                 fop.save_case_individual(f'case_{file_options["id"]}',
                     inputs, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict)
-        phi, residuals = prep.initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict, inputs['is_multiple_instances'], inputs['M_instances'], inputs['scaling_factor'])
+        phi, residuals = prep.initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict)
 
     elif file_options['load_case_data']:
         inputs_old, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict, phi, residuals = fop.load_case_data_individual(f'case_{file_options["id"]}', f'data_{file_options["id"]}')
