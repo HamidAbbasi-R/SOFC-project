@@ -1,8 +1,9 @@
 #!/bin/bash --login
 #$ -cwd
+#$ -t 1-20
 
 # Load module inside jobscript
 module load apps/binapps/anaconda3/2021.11
 
 # The actual job
-python individual_systems.py
+python -c "from individual_systems import solve_individual_systems as sis; sis(${SGE_TASK_ID})"
