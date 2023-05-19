@@ -754,7 +754,7 @@ def create_microstructure(inputs, display=False):
 
     if display:
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(2,3)])
+        vm([domain], [(2,3)], animation=False)
 
     return domain
 

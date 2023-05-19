@@ -506,10 +506,15 @@ def interior_individual(J, indices, K, ds, dx, bc, isMi, M_ins=None, scaling_fac
     
     return J, sum_nb
 
-def initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict, isMi, M_instances = None, scaling_factor = None):
+def initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict):
     # initial guess
     import numpy as np
     print('Initializing field variables...', end = ' ')
+
+    isMi = inputs['is_multiple_instances']
+    M_instances = inputs['M_instances']
+    scaling_factor = inputs['scaling_factor']
+
     residuals = [[]]*3
     phi = [[]]*3
     ds = masks_dict['ds']
