@@ -19,12 +19,12 @@ props = [
     ['Nx', [300]],
     ['Nyz', [100]],
     ['dx', [100]],
-    ['V', [0.001,0.005,0.01,0.03,0.05]],
+    ['V', [0.03,0.05]],
 ]
 
 # Create file names
-parameter = 'Ia_A'
-show_max_min = False
+parameter = 'Vio'
+show_max_min = True
 save_svg = False
 
 length_props = [None] * len(props)
