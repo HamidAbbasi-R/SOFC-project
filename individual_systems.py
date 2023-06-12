@@ -35,7 +35,7 @@ def solve_individual_systems(id):
     inputs['boundary_conditions']['Vio_b'] = 0
 
     if file_options['new_case']:
-        domain = tpl.create_microstructure(inputs, display=False)
+        domain = tpl.create_microstructure(inputs, display=True)
         domain, TPB_dict = tpl.topological_operations(inputs, domain, show_TPB=False)
         field_functions, _, bc_dict = prep.sourcefunc_calc(inputs, TPB_dict)
         masks_dict, indices =prep.get_indices_all(inputs, domain, TPB_dict)
@@ -82,7 +82,7 @@ def solve_individual_systems(id):
     # scaling the electron and ion potentials to the original values
     phi[1] = phi[1] + scale_ion
     phi[2] = phi[2] + scale_ion
-    dense_m = post.create_dense_matrices(phi, masks_dict, indices, field_functions)
+    dense_m = post.create_dense_matrices(inputs, phi, masks_dict, indices, field_functions, TPB_dict)
         
     Ia_A_m = post.visualize_3D_matrix(
         inputs, dense_m, TPB_dict,

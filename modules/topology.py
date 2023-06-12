@@ -726,7 +726,8 @@ def create_microstructure(inputs, display=False):
             vol_frac, 
             dx, 
             voxels, 
-            d_ave)
+            d_ave,
+            offset=True)
     
     elif flag_plurigaussian:
         seed = inputs['microstructure']['plurigaussian']['seed']
@@ -754,7 +755,7 @@ def create_microstructure(inputs, display=False):
 
     if display:
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(2,3)], animation=False)
+        vm([domain], [(2,3)], animation='zoom')
 
     return domain
 
@@ -790,7 +791,7 @@ def topological_operations(inputs, domain, show_TPB=False):
         import pyvista as pv
         TPB_mesh = pv.PolyData(vertices, lines=lines)
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(2,3)], TPB_mesh=TPB_mesh, animation=False)
+        vm([domain], [(2,3)], TPB_mesh=TPB_mesh)#, animation='rotation')
 
     # tortuosity_calculator(domain)
     return domain, TPB_dict
@@ -1062,7 +1063,7 @@ def infiltration(phase_mat, loading):
 
     return phase_mat
 
-def create_microstructure_lattice(vol_frac, dx, voxels, d_particle):
+def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True):
     import numpy as np
     from scipy.optimize import fsolve
 
@@ -1109,9 +1110,10 @@ def create_microstructure_lattice(vol_frac, dx, voxels, d_particle):
 
     # roll the entire lattice by half the size of a single lattice in all directions
     # This is done to make sure that all TPB are captured in the simulation domain
-    phase_mat = np.roll(phase_mat, N_lat//2, axis=0)
-    phase_mat = np.roll(phase_mat, N_lat//2, axis=1)
-    phase_mat = np.roll(phase_mat, N_lat//2, axis=2)
+    if offset:
+        phase_mat = np.roll(phase_mat, N_lat//2, axis=0)
+        phase_mat = np.roll(phase_mat, N_lat//2, axis=1)
+        phase_mat = np.roll(phase_mat, N_lat//2, axis=2)
 
     # phase numbers are assigned as follows:
     phase_mat += 1      # pore=1, Ni=2, YSZ=3

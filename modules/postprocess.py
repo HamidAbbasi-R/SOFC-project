@@ -329,7 +329,8 @@ def visualize_mesh(
         clip_widget=False, 
         TPB_mesh=[], 
         log_scale=None, 
-        animation=False):
+        animation='none',
+        save_html=False,):
     """
     Visualizes the mesh via PyVista.
     inputs:
@@ -376,41 +377,53 @@ def visualize_mesh(
             if bool(titles):
                 p.add_text(titles[i], font_size=20, position='lower_edge')
             if bool(TPB_mesh):
-                p.add_mesh(TPB_mesh, line_width=10, color='r')
+                p.add_mesh(TPB_mesh, line_width=5, color='r')
                 # for j in range(len(TPB_mesh)):
                     # p.add_mesh(TPB_mesh[j], line_width=3, color='k')
         p.add_bounding_box(line_width=1, color='black')
-        # p.add_axes(line_width=5)
+        # p.add_axes(line_width=5, labels_off=True)
+
 
     if bool(blocks):
         p.subplot(0, subplts)
         p.add_mesh(blocks)
-
-    # if bool(TPB_mesh):
-    #     p.add_mesh(TPB_mesh, line_width=3, color='k')
         
     p.link_views()
     p.view_isometric()
+    p.remove_scalar_bar()
+    # p.show_grid()
     # p.enable_parallel_projection()
-    # p.camera.zoom(2)
-    # p.save_graphic("img.eps",raster=False, painter=True)
-    # p.export_html("img.html")
-    if animation:
-        p.open_movie("animation.mp4")
-        frames = 300
+    if save_html:
+        p.export_html("img.html")
+
+    if animation != 'none':
+        p.open_movie("Binary files/animation.mp4")
         p.camera_position = 'xz'
-        p.camera.elevation = 0
-        p.camera.zoom(0.5)
-        # p.camera.focal_point = (-20.0, -20.0, -20.0)
-        # p.camera.thickness = 5000
-        # p.camera.clipping_range = (1e-2, 1e2)
-        for value in np.linspace(0, 1, frames):
-            # p.camera.azimuth = value * 360
-            p.camera.elevation = value * 70
-            p.camera.zoom(1.01)
-            p.write_frame()
-        p.close()
-    else:
+        if animation == 'zoom':
+            frames = 200
+            final_zoom = 0.5
+            initial_zoom = 0.1
+            p.camera.zoom(initial_zoom)
+            for value in np.linspace(0, 1, int(frames)):
+                x = (final_zoom / initial_zoom)**(1/(frames))
+                p.camera.zoom(x)
+                p.camera.azimuth = value * 40
+                p.camera.elevation = value * 20
+                p.write_frame()
+            frames = 400
+            for value in np.linspace(0, 1, int(frames)):
+                p.camera.azimuth = value * 360 + 40
+                p.write_frame()
+            p.close()
+        elif animation == 'rotate':
+            frames = 200
+            p.camera.elevation = 20
+            p.camera.zoom(1)
+            for value in np.linspace(0, 1, int(frames)):
+                p.camera.azimuth = value * 360
+                p.write_frame()
+            p.close()
+    elif animation == 'none':
         p.show()
     return None
     
@@ -547,8 +560,9 @@ def visualize_3D_matrix_entire_cell(inputs, phi_dense, masks_dict, TPB_dict, tit
 
         plot_with_continuous_error(x, Vio_lin, Vio_max, Vio_min, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title='Hydrogen concentration (kgm-3)')
 
-def create_dense_matrices(phi, masks_dict, indices, field_functions):
+def create_dense_matrices(inputs, phi, masks_dict, indices, field_functions, TPB_dict):
     import numpy as np
+    write_arrays = inputs['output_options']['write_arrays']
     ds = masks_dict['ds']
     N = ds[0].shape
     phi_dense = np.zeros(N)
@@ -564,6 +578,18 @@ def create_dense_matrices(phi, masks_dict, indices, field_functions):
     sol_Vel[ds[1] == False] = np.nan
     sol_Vio = np.copy(phi_dense)
     sol_Vio[ds[2] == False] = np.nan
+
+    if write_arrays:
+        np.savez(f'Binary files/arrays/matrices{inputs["file_options"]["id"]}.npz', 
+                 phi=phi_dense, 
+                 cH2=sol_cH2, 
+                 Vel=sol_Vel, 
+                 Vio=sol_Vio, 
+                 Ia=Ia_mat, 
+                 eta_act=eta_act_mat, 
+                 eta_con=eta_conc_mat,
+                 vertices=TPB_dict['vertices'],
+                 lines=TPB_dict['lines'])
 
     dense_m = {
         'phi_dense': phi_dense,
