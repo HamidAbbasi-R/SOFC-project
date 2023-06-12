@@ -401,9 +401,10 @@ def visualize_mesh(
         p.camera_position = 'xz'
         if animation == 'zoom':
             frames = 200
-            final_zoom = 0.5
+            final_zoom = 0.6
             initial_zoom = 0.1
             p.camera.zoom(initial_zoom)
+            p.camera.clipping_range = (1e-2, 1e3)
             for value in np.linspace(0, 1, int(frames)):
                 x = (final_zoom / initial_zoom)**(1/(frames))
                 p.camera.zoom(x)
