@@ -35,7 +35,7 @@ def solve_individual_systems(id):
     inputs['boundary_conditions']['Vio_b'] = 0
 
     if file_options['new_case']:
-        domain = tpl.create_microstructure(inputs, display=True)
+        domain = tpl.create_microstructure(inputs, display=False)
         domain, TPB_dict = tpl.topological_operations(inputs, domain, show_TPB=False)
         field_functions, _, bc_dict = prep.sourcefunc_calc(inputs, TPB_dict)
         masks_dict, indices =prep.get_indices_all(inputs, domain, TPB_dict)
