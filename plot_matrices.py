@@ -1,8 +1,8 @@
-id = 100
+id = 1001
 ch2_flag        = False
-Vel_flag        = False
+Vel_flag        = True
 Vio_flag        = True
-Ia_flag         = True
+Ia_flag         = False
 eta_act_flag    = False
 eta_con_flag    = False
 
@@ -10,7 +10,7 @@ eta_con_flag    = False
 # Import libraries
 import numpy as np
 
-matrices = np.load(f'Binary files/arrays/matrices{id}.npz')
+matrices = np.load(f'Binary files/arrays/matrices_{id}.npz')
 
 phi = matrices['phi']
 cH2 = matrices['cH2']
@@ -72,7 +72,8 @@ from modules.postprocess import visualize_mesh
 visualize_mesh(
     mat = mats,
     thd = thds,
-    titles = titles,
-    clip_widget = False, 
-    TPB_mesh = TPB_mesh,
-    log_scale = log_scale)
+    # titles = titles,
+    # clip_widget = False, 
+    # TPB_mesh = TPB_mesh,
+    log_scale = log_scale,
+    )

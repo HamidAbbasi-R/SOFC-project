@@ -390,7 +390,7 @@ def visualize_mesh(
         
     p.link_views()
     p.view_isometric()
-    p.remove_scalar_bar()
+    # p.remove_scalar_bar()
     # p.show_grid()
     # p.enable_parallel_projection()
     if save_html:
@@ -581,7 +581,7 @@ def create_dense_matrices(inputs, phi, masks_dict, indices, field_functions, TPB
     sol_Vio[ds[2] == False] = np.nan
 
     if write_arrays:
-        np.savez(f'Binary files/arrays/matrices{inputs["file_options"]["id"]}.npz', 
+        np.savez(f'Binary files/arrays/matrices_{inputs["file_options"]["id"]}.npz', 
                  phi=phi_dense, 
                  cH2=sol_cH2, 
                  Vel=sol_Vel, 

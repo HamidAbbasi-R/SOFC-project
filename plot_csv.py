@@ -5,7 +5,7 @@ import os
 import itertools
 
 # Different configurations
-folder = 'D39 - 0.93'
+folder = 'D21 - 0.46'
 
 # props = [
 #     ['dx', [30]],
@@ -16,15 +16,15 @@ folder = 'D39 - 0.93'
 # ]
 
 props = [
-    ['Nx', [300]],
+    ['Nx', [100,200,300,400,500,600,700,900,1000]],
     ['Nyz', [100]],
-    ['dx', [100]],
-    ['V', [0.03,0.05]],
+    ['dx', [50]],
+    ['V', [0.05]],
 ]
 
 # Create file names
 parameter = 'Vio'
-show_max_min = True
+show_max_min = False
 save_svg = False
 
 length_props = [None] * len(props)
