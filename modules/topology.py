@@ -753,9 +753,11 @@ def create_microstructure(inputs, display=False):
 
     domain = infiltration(domain, infiltration_loading)
 
+    # domain = upscale_phase_matrix(domain,scale=4)
+
     if display:
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(2,3)], animation='zoom')
+        vm([domain], [(2,3)], animation='none')
 
     return domain
 
@@ -1225,3 +1227,47 @@ def PDF_analysis(scale, probability_value):
     fig.add_trace(trace2)
     fig.show()
     return root
+
+def upscale_phase_matrix(phase_mat, scale=2):
+    import numpy as np
+
+    for _ in range(scale//2):
+        mat1 = phase_mat[:-1:2 , :-1:2 , :-1:2].flatten()
+        mat2 = phase_mat[1::2  , :-1:2 , :-1:2].flatten()
+        mat3 = phase_mat[:-1:2 , 1::2  , :-1:2].flatten()
+        mat4 = phase_mat[1::2  , 1::2  , :-1:2].flatten()
+        mat5 = phase_mat[:-1:2 , :-1:2 , 1::2 ].flatten()
+        mat6 = phase_mat[1::2  , :-1:2 , 1::2 ].flatten()
+        mat7 = phase_mat[:-1:2 , 1::2  , 1::2 ].flatten()
+        mat8 = phase_mat[1::2  , 1::2  , 1::2 ].flatten()
+
+        all_mat = np.stack((mat1,mat2,mat3,mat4,mat5,mat6,mat7,mat8), axis=-1)
+        all_mat_cnt_1 = np.sum(all_mat==1, axis=-1)
+        all_mat_cnt_2 = np.sum(all_mat==2, axis=-1)
+        all_mat_cnt_3 = np.sum(all_mat==3, axis=-1)
+
+        phase_mat_ups = np.zeros_like(all_mat_cnt_1)
+        phase_mat_ups[np.logical_and(all_mat_cnt_1>all_mat_cnt_2, all_mat_cnt_1>all_mat_cnt_3)] = 1
+        phase_mat_ups[np.logical_and(all_mat_cnt_2>all_mat_cnt_1, all_mat_cnt_2>all_mat_cnt_3)] = 2
+        phase_mat_ups[np.logical_and(all_mat_cnt_3>all_mat_cnt_1, all_mat_cnt_3>all_mat_cnt_2)] = 3
+
+        # find indices of phase_mat_ups = 0
+        indices_zero = np.where(phase_mat_ups==0)
+
+        # indices of neghboring voxels to phase_mat_ups = 0
+        indices_zero_up = tuple(np.array(indices_zero)-1)
+        indices_zero_down = tuple(np.array(indices_zero)+1)
+
+        # generate random number when phase_mat_ups = 0
+        # random number is selected based on the value of upper and lower neighboring voxels
+        for i in range(len(indices_zero[0])):
+            rand_num = np.random.choice([phase_mat_ups[indices_zero_up[0][i]], phase_mat_ups[indices_zero_down[0][i]]])
+            j = 1
+            while rand_num == 0:
+                rand_num = np.random.choice([phase_mat_ups[indices_zero_up[0][i]-j], phase_mat_ups[indices_zero_down[0][i]+j]])
+                j += 1
+            phase_mat_ups[indices_zero[0][i]] = rand_num
+
+        phase_mat = phase_mat_ups.reshape((phase_mat.shape[0]//2,phase_mat.shape[1]//2,phase_mat.shape[2]//2))
+
+    return phase_mat
