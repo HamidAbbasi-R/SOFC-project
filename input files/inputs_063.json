@@ -5,20 +5,20 @@
         "load_case_data": false,
         "save_case": false,
         "save_data": false,
-        "id": "test"
+        "id": "063"
     },
     "microstructure": {
-        "dx": 100E-9,
-        "average_diameter": 0.5E-6,
+        "dx": 1e-07,
+        "average_diameter": 5e-07,
         "volume_fractions": {
             "pores": 0.44,
             "Ni": 0.28,
             "YSZ": 0.28
         },
         "length": {
-            "X": 50E-6,
-            "Y": 10E-6,
-            "Z": 10E-6
+            "X": 1e-05,
+            "Y": 1e-05,
+            "Z": 1e-05
         },
         "lattice_geometry": {
             "flag": false
@@ -32,7 +32,7 @@
             ],
             "reduced_geometry": {
                 "flag": false,
-                "Lx_extended": 1E-5
+                "Lx_extended": 1e-05
             }
         },
         "infiltration_loading": 0
@@ -40,7 +40,7 @@
     "boundary_conditions": {
         "pH2_inlet": 0.95,
         "pH2_b": 0.95,
-        "Vel_b": 0.05,
+        "Vel_b": 0.1,
         "Vio_b": 0
     },
     "operating_conditions": {
@@ -51,7 +51,7 @@
         "ion_only": true,
         "max_iter_non": 300,
         "max_iter_lin": 20,
-        "tol": 5E-5,
+        "tol": 5e-05,
         "uf": {
             "cH2": 0.9,
             "Vel": 0.9,
