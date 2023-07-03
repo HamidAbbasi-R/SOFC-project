@@ -7,7 +7,7 @@ params = {
     # "pH2_inlet": [0.95] * n_cases,
     "average_diameter": [0.5e-6] * (n_cases//2) + [1e-6] * (n_cases//2),
     "Vel_b": [0.001, 0.01, 0.1, 0.2, 0.5] * (n_cases//5),
-    "length_X": [10e-6]*5 + [20e-6]*5 + [40e-6]*5 + [50e-6]*5 + [100e-6]*5 + [10e-6]*5 + [20e-6]*5 + [30e-6]*5 + [50e-6]*5 + [100e-6]*5,
+    "length_X": [10e-6]*5 + [20e-6]*5 + [40e-6]*5 + [50e-6]*5 + [100e-6]*5 + [10e-6]*5 + [20e-6]*5 + [30e-6]*5 + [40e-6]*5 + [100e-6]*5,
     # "length_YZ": [10e-6] * n_cases,
     # "lattice_geometry": [False] * n_cases,
     # "vf_pores": [0.44] * n_cases,
