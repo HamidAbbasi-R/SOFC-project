@@ -705,6 +705,7 @@ def create_microstructure(inputs, display=False):
     flag_reduced = inputs['microstructure']['plurigaussian']['reduced_geometry']['flag']
     
     dx = inputs['microstructure']['dx']
+    scale_factor = inputs['microstructure']['scale_factor']
     
     d_ave = inputs['microstructure']['average_diameter']
     
@@ -753,7 +754,8 @@ def create_microstructure(inputs, display=False):
 
     domain = infiltration(domain, infiltration_loading)
 
-    # domain = upscale_phase_matrix(domain,scale=4)
+    domain = downscale_phase_matrix(domain,scale_factor)
+    inputs['microstructure']['dx'] = dx*scale_factor
 
     if display:
         from modules.postprocess import visualize_mesh as vm
@@ -777,6 +779,9 @@ def topological_operations(inputs, domain, show_TPB=False):
     # when periodic boundary condition is used, percolation analysis should not be done.
     domain, _, _ = percolation_analysis(domain)
 
+    # measure covariance
+    cov = measure_covariance(domain, phase=1)
+    
     # measure the triple phase boundary and create a mask for source term
     dx = inputs['microstructure']['dx']
     TPB_mask, TPB_density, vertices, lines = measure_TPB(domain, dx)
@@ -1065,7 +1070,7 @@ def infiltration(phase_mat, loading):
 
     return phase_mat
 
-def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True):
+def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True, smallest_geometry=True):
     import numpy as np
     from scipy.optimize import fsolve
 
@@ -1228,10 +1233,12 @@ def PDF_analysis(scale, probability_value):
     fig.show()
     return root
 
-def upscale_phase_matrix(phase_mat, scale=2):
+def downscale_phase_matrix(phase_mat, scale):
     import numpy as np
+    if scale == 1:
+        return phase_mat
 
-    for _ in range(scale//2):
+    for _ in range(int(np.log(scale)/np.log(2))):
         mat1 = phase_mat[:-1:2 , :-1:2 , :-1:2].flatten()
         mat2 = phase_mat[1::2  , :-1:2 , :-1:2].flatten()
         mat3 = phase_mat[:-1:2 , 1::2  , :-1:2].flatten()
@@ -1271,3 +1278,27 @@ def upscale_phase_matrix(phase_mat, scale=2):
         phase_mat = phase_mat_ups.reshape((phase_mat.shape[0]//2,phase_mat.shape[1]//2,phase_mat.shape[2]//2))
 
     return phase_mat
+
+def measure_covariance(domain,phase=1):
+    import numpy as np
+    import plotly.graph_objects as go
+
+    domain = domain==phase
+    domain = domain.astype(bool)
+
+    N = domain.shape
+    cov = np.zeros(shape=(N[0]-1))
+
+    # for k in range(N[2]):
+    #     for j in range(N[1]):
+    for i in range(N[0]-1):
+        cov[i] = np.mean(np.logical_and(domain[0,:,:],domain[i+1,:,:]))
+
+    fig = go.Figure()
+    trace1 = go.Scatter(x=np.arange(1,N[0]), y=cov, mode='lines + markers', name='Covariance')
+    fig.update_xaxes(title_text="Distance [voxels]")
+    fig.update_yaxes(title_text="Covariance function")
+    fig.add_trace(trace1)
+    fig.show()
+
+    return cov
