@@ -1,6 +1,8 @@
-id = 1001
+# def plot_matrix(id):
+import pyvista as pv
+id = 85
 ch2_flag        = False
-Vel_flag        = True
+Vel_flag        = False
 Vio_flag        = True
 Ia_flag         = False
 eta_act_flag    = False
@@ -9,7 +11,8 @@ eta_con_flag    = False
 
 # Import libraries
 import numpy as np
-
+# add zeros to the name of the file if the id is less than 100
+id = str(id).zfill(3)
 matrices = np.load(f'Binary files/arrays/matrices_{id}.npz')
 
 phi = matrices['phi']
@@ -28,7 +31,6 @@ thds = []
 log_scale = []
 titles = []
 
-import pyvista as pv
 pv.set_plot_theme("document")
 TPB_mesh = pv.PolyData(vertices, lines=lines)
 
@@ -74,6 +76,6 @@ visualize_mesh(
     thd = thds,
     # titles = titles,
     # clip_widget = False, 
-    # TPB_mesh = TPB_mesh,
+    TPB_mesh = TPB_mesh,
     log_scale = log_scale,
     )
