@@ -377,7 +377,7 @@ def visualize_mesh(
             if bool(titles):
                 p.add_text(titles[i], font_size=20, position='lower_edge')
             if bool(TPB_mesh):
-                p.add_mesh(TPB_mesh, line_width=5, color='r')
+                p.add_mesh(TPB_mesh, line_width=1, color='r')
                 # for j in range(len(TPB_mesh)):
                     # p.add_mesh(TPB_mesh[j], line_width=3, color='k')
         p.add_bounding_box(line_width=1, color='black')
@@ -391,6 +391,7 @@ def visualize_mesh(
     p.link_views()
     p.view_isometric()
     # p.remove_scalar_bar()
+    p.camera_position = 'xy'
     # p.show_grid()
     # p.enable_parallel_projection()
     if save_html:
@@ -425,6 +426,7 @@ def visualize_mesh(
                 p.write_frame()
             p.close()
     elif animation == 'none':
+        # pv.set_jupyter_backend('trame')
         p.show()
     return None
     
