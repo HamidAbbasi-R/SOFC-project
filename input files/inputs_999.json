@@ -9,19 +9,27 @@
     },
     "microstructure": {
         "dx": 20e-09,
-        "average_diameter": 0.5e-06,
+        "average_diameter": 0.25e-06,
         "volume_fractions": {
-            "pores": 0.44,
-            "Ni": 0.28,
-            "YSZ": 0.28
+            "pores": 0.99,
+            "Ni": 0.005,
+            "YSZ": 0.005
         },
         "length": {
-            "X": 10e-06,
-            "Y": 2e-06,
-            "Z": 2e-06
+            "X": 4e-06,
+            "Y": 1e-06,
+            "Z": 1e-06
+        },
+        "fibrous_bed": {
+            "flag": true,
+            "length": 35e-06,
+            "amplitude": 1,
+            "frequency": 1,
+            "overlap": 1.2,
+            "rotation_max": [0,0,0]
         },
         "lattice_geometry": {
-            "flag": true
+            "flag": false
         },
         "plurigaussian": {
             "flag": false,

@@ -703,7 +703,8 @@ def create_microstructure(inputs, display=False):
     flag_lattice = inputs['microstructure']['lattice_geometry']['flag']
     flag_plurigaussian = inputs['microstructure']['plurigaussian']['flag']
     flag_reduced = inputs['microstructure']['plurigaussian']['reduced_geometry']['flag']
-    
+    flag_fibrous = inputs['microstructure']['fibrous_bed']['flag']
+
     dx = inputs['microstructure']['dx']
     scale_factor = inputs['microstructure']['scale_factor']
     
@@ -728,7 +729,8 @@ def create_microstructure(inputs, display=False):
             dx, 
             voxels, 
             d_ave,
-            offset=True)
+            offset=True,
+            smallest_geometry=True)
     
     elif flag_plurigaussian:
         seed = inputs['microstructure']['plurigaussian']['seed']
@@ -751,6 +753,24 @@ def create_microstructure(inputs, display=False):
     
         if flag_reduced:
             domain = domain[:voxels[0],:,:]
+    
+    elif flag_fibrous:
+        length = int(inputs['microstructure']['fibrous_bed']['length']/dx)
+        radius = int(d_ave/2/dx)
+        amp = inputs['microstructure']['fibrous_bed']['amplitude']
+        freq = inputs['microstructure']['fibrous_bed']['frequency']
+        overlap = inputs['microstructure']['fibrous_bed']['overlap']
+        rot_max = inputs['microstructure']['fibrous_bed']['rotation_max']
+        target_porosity = vol_frac[0]
+        domain = create_fibrous_bed(
+            voxels = voxels,
+            radius = radius, 
+            length = length, 
+            target_porosity = target_porosity,
+            amp = amp, 
+            freq = freq, 
+            overlap = overlap, 
+            rotation_max = rot_max)
 
     domain = infiltration(domain, infiltration_loading)
 
@@ -780,7 +800,7 @@ def topological_operations(inputs, domain, show_TPB=False):
     domain, _, _ = percolation_analysis(domain)
 
     # measure covariance
-    cov = measure_covariance(domain, phase=1)
+    # cov = measure_covariance(domain, phase=1)
     
     # measure the triple phase boundary and create a mask for source term
     dx = inputs['microstructure']['dx']
@@ -1107,10 +1127,13 @@ def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True,
     phase_mat_lat[:,N_lat:,:N_lat][dist_center_mat < r] = 2
     phase_mat_lat[:,:N_lat,N_lat:][dist_center_mat < r] = 2
 
-    shape_lat = np.array(phase_mat_lat.shape)
-    X_tiles = int(N[0] // shape_lat[0])
-    Y_tiles = int(N[1] // shape_lat[1])
-    Z_tiles = int(N[2] // shape_lat[2])
+    if smallest_geometry:
+        N[1] = phase_mat_lat.shape[1]
+        N[2] = phase_mat_lat.shape[2]
+
+    X_tiles = int(N[0] // phase_mat_lat.shape[0])
+    Y_tiles = int(N[1] // phase_mat_lat.shape[1])
+    Z_tiles = int(N[2] // phase_mat_lat.shape[2])
 
     # create the entire microstructure by tiling a single lattice
     phase_mat = np.tile(phase_mat_lat, (X_tiles,Y_tiles,Z_tiles)).astype(int)
@@ -1302,3 +1325,231 @@ def measure_covariance(domain,phase=1):
     fig.show()
 
     return cov
+
+def create_fibre(radius, length):
+    import numpy as np
+    fibre = np.zeros(shape=(length,2*radius,2*radius), dtype=int)
+    # create i,j,k indices
+    i = np.arange(fibre.shape[0])
+    j = np.arange(fibre.shape[1])
+    k = np.arange(fibre.shape[2])
+    # create meshgrid
+    I,J,K = np.meshgrid(i,j,k, indexing='ij')
+    fibre[(J-radius)**2+(K-radius)**2 < radius**2] = 1
+
+    # delete the first slice of the rod in j and k directions
+    fibre = fibre[:,1:,1:]
+
+    return fibre
+
+def create_twisted_fibre(radius, length, amp=1, freq=1, phase=0, overlap=1):
+    import numpy as np
+    import plotly.graph_objects as go
+
+    # create the rod
+    # rod radius is increased by overlap
+    new_radius = int(radius*overlap)
+    fibre = create_fibre(new_radius, length)
+
+    # create the wave function
+    # amp is the amplitude of the wave function relative to the radius of the rod
+    AMP = amp * radius
+    phi_1 = phase           # phase shift in the i direction
+    phi_2 = phi_1 + np.pi/2 # phase shift in the j direction
+    wave_1 = np.sin(np.arange(length)*freq*2*np.pi/length + phi_1)*AMP
+    wave_2 = np.sin(np.arange(length)*freq*2*np.pi/length + phi_2)*AMP
+
+    # make the rod bigger in j and k directions
+    fibre = np.pad(fibre, 
+                 ((0,0),(int(AMP),int(AMP)),(int(AMP),int(AMP))), 
+                 'constant', constant_values=0)
+
+    # create the twisted rod
+    for i in range(fibre.shape[0]):
+        fibre[i,:,:] = np.roll(fibre[i,:,:], wave_1[i].astype(int), axis=0)
+        fibre[i,:,:] = np.roll(fibre[i,:,:], wave_2[i].astype(int), axis=1)
+
+    return fibre
+
+def create_double_twisted_fibre(radius, length, amp=1, freq=1, overlap=1):
+    # if amp>1 then two twisted fibres are not touching each other.
+    import numpy as np
+
+    fibre_1 = create_twisted_fibre(radius, length, amp, freq, phase=0, overlap=overlap)
+    fibre_2 = create_twisted_fibre(radius, length, amp, freq, phase=np.pi, overlap=overlap)
+    fibre_2[fibre_2==1] = 2 # change the material of the second rod
+
+    fibre = fibre_1 + fibre_2
+    fibre[fibre==3] = 1 # change the material of the overlapping region
+
+    return fibre
+
+def rotate_3D_image(image, rotation=(0,0,0)):
+    import numpy as np
+    from scipy.ndimage import rotate
+
+    # M = 10000
+    # image *= M
+    image = rotate(image, rotation[0], axes=(1,2), prefilter=True)
+    image = rotate(image, rotation[1], axes=(0,2), prefilter=True)
+    image = rotate(image, rotation[2], axes=(0,1), prefilter=True)
+    image = image.astype(int)
+    # image[image<0.5*M] = 0
+    # image[np.logical_and(image>0.5*M, image<1.5*M)] = 1
+    # image[image>1.5*M] = 2
+
+    return image
+
+def create_fibrous_bed(
+        voxels,
+        radius, 
+        length, 
+        target_porosity,
+        amp = 1, 
+        freq = 1, 
+        overlap = 1, 
+        rotation_max = (0,0,0)):
+    
+    import numpy as np
+
+    # initialize the bed
+    bed = np.zeros(shape=voxels, dtype=int)
+    por_bed = 1
+
+    # place each rod randomly in the bed
+    while por_bed > target_porosity:
+        rotation = np.random.uniform(-1,1,3)*rotation_max
+        fibre = create_double_twisted_fibre(radius, length, amp, freq, overlap)
+        fibre = rotate_3D_image(fibre, rotation)
+        fibre = bend_fibre(fibre, np.random.uniform(low=1, high=1.5))
+
+        # find a random position in the bed
+        i = np.random.randint(0, bed.shape[0])
+        j = np.random.randint(0, bed.shape[1])
+        k = np.random.randint(0, bed.shape[2])
+        
+        # identify start and end indices of the fibre domain in the bed
+        i_start = i-fibre.shape[0]//2
+        j_start = j-fibre.shape[1]//2
+        k_start = k-fibre.shape[2]//2
+        i_end = i_start + fibre.shape[0]
+        j_end = j_start + fibre.shape[1]
+        k_end = k_start + fibre.shape[2]
+
+        # create a mask for the fibre domain
+        fibre_mask = np.zeros_like(bed, dtype=int)
+        
+        if i_start < 0 or i_end > bed.shape[0]:
+            i_start = i_start % bed.shape[0]
+            i_end = i_end % bed.shape[0]
+            fibre_mask[i_start:,:,:] += 1
+            fibre_mask[:i_end,:,:] += 1
+        else:
+            fibre_mask[i_start:i_end, :, :] += 1
+
+        if j_start < 0 or j_end > bed.shape[1]:
+            j_start = j_start % bed.shape[1]
+            j_end = j_end % bed.shape[1]
+            fibre_mask[:,j_start:,:] += 1
+            fibre_mask[:,:j_end,:] += 1
+        else:
+            fibre_mask[:, j_start:j_end, :] += 1
+
+        if k_start < 0 or k_end > bed.shape[2]:
+            k_start = k_start % bed.shape[2]
+            k_end = k_end % bed.shape[2]
+            fibre_mask[:,:,k_start:] += 1
+            fibre_mask[:,:,:k_end] += 1
+        else:
+            fibre_mask[:, :, k_start:k_end] += 1
+        
+        # put the fibre in the bed in a random specific location
+        fibre_mask = fibre_mask == 3
+        start_eff = np.array([i_start, j_start, k_start])
+        end_eff = np.array([i_end, j_end, k_end])
+        put_fibre_in_bed(fibre, fibre_mask, bed, start_eff, end_eff)
+
+        # calculate the new porosity of the bed
+        por_bed = np.sum(bed==0)/bed.size
+    
+    # values of the bed are 1,2,3
+    bed += 1
+    return bed
+
+def put_fibre_in_bed(fibre, f_mask, bed, start_eff, end_eff):
+    import numpy as np
+
+    # These are effective start and end points of the fibre
+    i1, j1, k1 = start_eff
+    i2, j2, k2 = end_eff
+    N = bed.shape
+    N_fibre = fibre.shape
+
+    if np.any(np.array(N_fibre) > np.array(N)):
+        # warning message and skip this fibre
+        print('Fibre is too large for the bed. Skipping this fibre.')
+        return
+
+    if i1<i2 and j1<j2 and k1<k2:
+        bed[f_mask] += fibre.flatten()
+
+    elif i1>i2 and j1<j2 and k1<k2:
+        bed[i1:,j1:j2,k1:k2][f_mask[i1:,j1:j2,k1:k2]] += fibre[:N[0]-i1,:,:].flatten()
+        bed[:i2,j1:j2,k1:k2][f_mask[:i2,j1:j2,k1:k2]] += fibre[N[0]-i1:,:,:].flatten()
+    
+    elif i1<i2 and j1>j2 and k1<k2:
+        bed[i1:i2,j1:,k1:k2][f_mask[i1:i2,j1:,k1:k2]] += fibre[:,:N[1]-j1,:].flatten()
+        bed[i1:i2,:j2,k1:k2][f_mask[i1:i2,:j2,k1:k2]] += fibre[:,N[1]-j1:,:].flatten()
+    
+    elif i1<i2 and j1<j2 and k1>k2:
+        bed[i1:i2,j1:j2,k1:][f_mask[i1:i2,j1:j2,k1:]] += fibre[:,:,:N[2]-k1].flatten()
+        bed[i1:i2,j1:j2,:k2][f_mask[i1:i2,j1:j2,:k2]] += fibre[:,:,N[2]-k1:].flatten()
+    
+    elif i1>i2 and j1>j2 and k1<k2:
+        bed[i1:,j1:,k1:k2][f_mask[i1:,j1:,k1:k2]] += fibre[:N[0]-i1,:N[1]-j1,:].flatten()
+        bed[:i2,:j2,k1:k2][f_mask[:i2,:j2,k1:k2]] += fibre[N[0]-i1:,N[1]-j1:,:].flatten()
+        bed[i1:,:j2,k1:k2][f_mask[i1:,:j2,k1:k2]] += fibre[:N[0]-i1,N[1]-j1:,:].flatten()
+        bed[:i2,j1:,k1:k2][f_mask[:i2,j1:,k1:k2]] += fibre[N[0]-i1:,:N[1]-j1,:].flatten()
+    
+    elif i1>i2 and j1<j2 and k1>k2:
+        bed[i1:,j1:j2,k1:][f_mask[i1:,j1:j2,k1:]] += fibre[:N[0]-i1,:,:N[2]-k1].flatten()
+        bed[:i2,j1:j2,:k2][f_mask[:i2,j1:j2,:k2]] += fibre[N[0]-i1:,:,N[2]-k1:].flatten()
+        bed[i1:,j1:j2,:k2][f_mask[i1:,j1:j2,:k2]] += fibre[:N[0]-i1,:,N[2]-k1:].flatten()
+        bed[:i2,j1:j2,k1:][f_mask[:i2,j1:j2,k1:]] += fibre[N[0]-i1:,:,:N[2]-k1].flatten()
+    
+    elif i1<i2 and j1>j2 and k1>k2:
+        bed[i1:i2,j1:,k1:][f_mask[i1:i2,j1:,k1:]] += fibre[:,:N[1]-j1,:N[2]-k1].flatten()
+        bed[i1:i2,:j2,:k2][f_mask[i1:i2,:j2,:k2]] += fibre[:,N[1]-j1:,N[2]-k1:].flatten()
+        bed[i1:i2,:j2,k1:][f_mask[i1:i2,:j2,k1:]] += fibre[:,N[1]-j1:,:N[2]-k1].flatten()
+        bed[i1:i2,j1:,:k2][f_mask[i1:i2,j1:,:k2]] += fibre[:,:N[1]-j1,N[2]-k1:].flatten()
+    
+    elif i1>i2 and j1>j2 and k1>k2:
+        bed[i1:,j1:,k1:][f_mask[i1:,j1:,k1:]] += fibre[:N[0]-i1,:N[1]-j1,:N[2]-k1].flatten()
+        bed[:i2,:j2,:k2][f_mask[:i2,:j2,:k2]] += fibre[N[0]-i1:,N[1]-j1:,N[2]-k1:].flatten()
+        bed[i1:,:j2,:k2][f_mask[i1:,:j2,:k2]] += fibre[:N[0]-i1,N[1]-j1:,N[2]-k1:].flatten()
+        bed[:i2,j1:,k1:][f_mask[:i2,j1:,k1:]] += fibre[N[0]-i1:,:N[1]-j1,:N[2]-k1].flatten()
+        bed[i1:,j1:,:k2][f_mask[i1:,j1:,:k2]] += fibre[:N[0]-i1,:N[1]-j1,N[2]-k1:].flatten()
+        bed[:i2,:j2,k1:][f_mask[:i2,:j2,k1:]] += fibre[N[0]-i1:,N[1]-j1:,:N[2]-k1].flatten()
+        bed[i1:,:j2,k1:][f_mask[i1:,:j2,k1:]] += fibre[:N[0]-i1,N[1]-j1:,:N[2]-k1].flatten()
+        bed[:i2,j1:,:k2][f_mask[:i2,j1:,:k2]] += fibre[N[0]-i1:,:N[1]-j1,N[2]-k1:].flatten()
+
+    # randomly assign 1 or 2 to the overlapping voxels [should be improved]
+    bed[bed>2] = np.random.choice([1,2])
+    return bed
+
+def bend_fibre(fibre,bending_factor):
+    import numpy as np
+    
+    bf = int(bending_factor*fibre.shape[1])
+    # pad the fibre domain
+    fibre = np.pad(fibre,
+                        ((0,0),(0,bf),(0,0)),
+                        'constant', constant_values=0)
+    
+    # bend the fibre using np.roll
+    length = fibre.shape[0]
+    wave = np.sin(np.arange(length)*np.pi/length)*bf
+    for i in range(length):
+        fibre[i,...] = np.roll(fibre[i,...], wave[i].astype(int), axis=0)
+
+    return fibre
