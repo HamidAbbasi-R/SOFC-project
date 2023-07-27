@@ -1,3 +1,4 @@
+import numpy as np
 def create_microstructure_plurigaussian(
         voxels, 
         vol_frac, 
@@ -29,15 +30,12 @@ def create_microstructure_plurigaussian(
     outputs:
     phase_mat: three phase phase matrix
     """
-    import numpy as np
     # Apparently, skimage has some issues with being called from matlab.
     # This package is used herer to apply Gaussian filter on the random matrices.
     # Instead of using skimage, Gaussian filter implemented in scipy package can be used
     # to circumvent this issue. scipy.ndimage.gaussian_filter
     # import skimage
     from scipy.ndimage import gaussian_filter
-
-    print("Generating microstructure...", end='')
 
     # calculate sigma based on average diameter data
     # This factor should be between 2 and 3
@@ -69,8 +67,9 @@ def create_microstructure_plurigaussian(
     # create two random matrices (two matrices are necessary
     # for three phase porous media)
     voxels = np.array(voxels)
-    rand_mat_1 = rng_1.random(size=(Nx,Ny,Nz))
-    rand_mat_2 = rng_2.random(size=(Nx,Ny,Nz))
+    dims = (Nx,Ny,Nz) if dim==3 else (Nx,Ny)
+    rand_mat_1 = rng_1.random(size=dims)
+    rand_mat_2 = rng_2.random(size=dims)
 
     # create a tile matrix, according to the dimension
     tile_mat = tuple(np.ones(dim,dtype=int)*3) if periodic else tuple(np.ones(dim,dtype=int)*1)
@@ -116,8 +115,8 @@ def create_microstructure_plurigaussian(
                     b = np.quantile(smooth_mat_2[i,:,:][smooth_mat_1[i,:,:] >= a].flatten(), q=vf_Ni[i]/(1-vf_p))
                     phase_mat[i,:,:][smooth_mat_1[i,:,:] < a] = 1
                     phase_mat[i,:,:][np.logical_and(smooth_mat_2[i,:,:] < b, smooth_mat_1[i,:,:] > a)] = 2
-            if len(vol_frac)==1:    # phases: 0-1
-                phase_mat = np.zeros_like(smooth_mat_1, dtype=int)
+            if len(vol_frac)==1:    # phases: 1-2
+                phase_mat = np.zeros_like(smooth_mat_1, dtype=int)+2
                 vf_min = vol_frac[0] / gradient_factor
                 vf_max = vol_frac[0] + vol_frac[0] / gradient_factor * (gradient_factor - 1)
                 vf = np.linspace(vf_min, vf_max, voxels[0])
@@ -139,8 +138,8 @@ def create_microstructure_plurigaussian(
                     b = np.quantile(smooth_mat_2[i,:][smooth_mat_1[i,:] >= a].flatten(), q=vf_Ni[i]/(1-vf_p))
                     phase_mat[i,:][smooth_mat_1[i,:] < a] = 1
                     phase_mat[i,:][np.logical_and(smooth_mat_2[i,:] < b, smooth_mat_1[i,:] > a)] = 2
-            if len(vol_frac)==1: # phases 0-1
-                phase_mat = np.zeros_like(smooth_mat_1, dtype=int)
+            if len(vol_frac)==1: # phases 1-2
+                phase_mat = np.zeros_like(smooth_mat_1, dtype=int)+2
                 vf_min = vol_frac[0] / gradient_factor
                 vf_max = vol_frac[0] + vol_frac[0] / gradient_factor * (gradient_factor - 1)
                 vf = np.linspace(vf_min, vf_max, voxels[0])
@@ -208,8 +207,6 @@ def create_microstructure_plurigaussian(
                   selector=dict(mode='markers'))
         fig.write_image("hist2D.svg")
         fig.show()
-
-    print('Done!')
     return phase_mat
 
 def measure_TPB(phase_mat, dx):
@@ -233,7 +230,6 @@ def measure_TPB(phase_mat, dx):
     lines:
         TPB lines in the 3D domain. used for visualization in pyvista.
     """
-    import numpy as np
     # from tqdm import tqdm
     from scipy import ndimage as ndi
 
@@ -415,7 +411,6 @@ def measure_TPB_notvec(phase_mat):
     obsolete and non-vectorized version of measure_TPB_vec. the runtime of 
     this function is much higher than the vectorized version.
     """
-    import numpy as np
     from tqdm import tqdm
     
     phase_mat, _, _= percolation_analysis(phase_mat)
@@ -482,7 +477,6 @@ def measure_TPB_notvec(phase_mat):
     return TPBs, TPB_density, vertices, lines
 
 def percolation_analysis(phase_mat):
-    import numpy as np
     from scipy import ndimage as ndi
     # only the pores (phase_mat==1) must be true for percolation analysis
     phase_1 = np.zeros(shape=phase_mat.shape, dtype=bool)
@@ -559,7 +553,6 @@ def shuffle_labels(labeled_mat):
     # shuffling the labels without changing the location of "Falses"
     # It's because the label "False" denotes the background phase 
     # we want to delete the background phase from the matrix (replace them with nan)
-    import numpy as np
     num = np.max(labeled_mat)
     b = np.arange(start=1, stop=num+1)
     np.random.shuffle(b)
@@ -568,52 +561,6 @@ def shuffle_labels(labeled_mat):
     shuffled_mat = shuffled_mat.astype(float)
     shuffled_mat[shuffled_mat==0] = np.nan
     return shuffled_mat
-
-def interfacial_surface(phase_mat):
-    """
-    Measures the interfacial surface between different phases.
-
-    Parameters
-    ----------
-    phase_mat : float
-        Three dimensional matrix describing the phase data.
-
-    Returns
-    -------
-    isa_12_mat : integer
-        Three dimensional matrix describing the interfacial 
-        surface area (ISA) between the 1st and the 2nd phases.
-    isa_23_mat : integer
-        Same as above. But for 2nd and 3rd phases.
-    isa_31_mat : integer
-        Same as above. But for 3rd and 1st phases.
-    isa_12 : float
-        Normalized interfacial surface area (m2/m3)
-    """
-    from scipy import ndimage as ndi
-    import numpy as np
-    
-    A1 = phase_mat == 1
-    A2 = phase_mat == 2
-    A3 = phase_mat == 3
-    
-    B1 = ndi.binary_dilation(A1).astype(A1.dtype)
-    B2 = ndi.binary_dilation(A2).astype(A2.dtype)
-    B3 = ndi.binary_dilation(A3).astype(A3.dtype)
-    
-    C1 = B1 - A1.astype(int)
-    C2 = B2 - A2.astype(int)
-    C3 = B3 - A3.astype(int)
-    
-    isa_12_mat = C1 * A2.astype(int)
-    isa_23_mat = C2 * A3.astype(int)
-    isa_31_mat = C3 * A1.astype(int)
-    
-    isa_12 = np.sum(isa_12_mat) / np.power(phase_mat.shape[0],3)
-    isa_23 = np.sum(isa_23_mat) / np.power(phase_mat.shape[0],3)
-    isa_31 = np.sum(isa_31_mat) / np.power(phase_mat.shape[0],3)
-    
-    return isa_12_mat, isa_23_mat, isa_31_mat, isa_12, isa_23, isa_31
 
 def image_segmentation(phase_mat,sigma=5,display=False):
     """ 
@@ -627,7 +574,6 @@ def image_segmentation(phase_mat,sigma=5,display=False):
         
     Outputs:
     labels:"""
-    import numpy as np
     import concurrent.futures
     
     # import plotly.io as po
@@ -670,7 +616,6 @@ def remove_thin_boundaries(phase_mat):
     phase_mat : float
         Three dimensional matrix describing the phase data.
     """
-    import numpy as np
     phase_mat[ : , : , 0][phase_mat[:,:,0]  != phase_mat[:,:,1] ] = np.nan
     phase_mat[ : , : ,-1][phase_mat[:,:,-1] != phase_mat[:,:,-2]] = np.nan
     phase_mat[ : , 0 , :][phase_mat[:,0,:]  != phase_mat[:,1,:] ] = np.nan
@@ -683,7 +628,6 @@ def remove_edges(phi):
     """
     Remove the edges of the domain
     """
-    import numpy as np
     phi[0,0,:]   = np.nan
     phi[-1,0,:]  = np.nan
     phi[0,-1,:]  = np.nan
@@ -700,6 +644,7 @@ def remove_edges(phi):
     return phi
     
 def create_microstructure(inputs, display=False):
+    print("Generating microstructure...", end='')
     flag_lattice = inputs['microstructure']['lattice_geometry']['flag']
     flag_plurigaussian = inputs['microstructure']['plurigaussian']['flag']
     flag_reduced = inputs['microstructure']['plurigaussian']['reduced_geometry']['flag']
@@ -774,13 +719,14 @@ def create_microstructure(inputs, display=False):
 
     domain = infiltration(domain, infiltration_loading)
 
-    domain = downscale_phase_matrix(domain,scale_factor)
+    domain = downscale_domain(domain,scale_factor)
     inputs['microstructure']['dx'] = dx*scale_factor
 
     if display:
         from modules.postprocess import visualize_mesh as vm
         vm([domain], [(2,3)], animation='none')
 
+    print('Done!')
     return domain
 
 def topological_operations(inputs, domain, show_TPB=False):
@@ -825,7 +771,6 @@ def topological_operations(inputs, domain, show_TPB=False):
 
 # specific functions for entire cell microstructure
 def create_microstructure_entire_cell(inputs):
-    import numpy as np
     
     domain_a = create_microstructure_plurigaussian(
         voxels = [inputs['Nx_a'],inputs['Ny'],inputs['Nz']],
@@ -852,7 +797,6 @@ def create_microstructure_entire_cell(inputs):
     return domain
 
 def topological_operations_entire_cell(inputs, domain):
-    import numpy as np
     import pyvista as pv
 
     domain_a = domain[:inputs['Nx_a'],:,:]
@@ -877,7 +821,6 @@ def create_ideal_microstructure_spheres(voxels, TPB_radius):
     # third and two thirds of the domain. The TPB length can then be calculated 
     # analytically. This is useful for testing the TPB length calculation.
  
-    import numpy as np
     # voxels = [TPB_radius*4] * 3
     domain = np.zeros(shape = voxels, dtype = int)
 
@@ -907,8 +850,7 @@ def create_ideal_microstructure_spheres(voxels, TPB_radius):
 
     return TPB_analytical, TPB_measured
 
-def create_ideal_microstructre(inputs, display=False):
-    import numpy as np
+def create_ideal_microstructre_straight_bars(inputs, display=False):
     Nx = inputs['microstructure']['Nx']
     Ny = inputs['microstructure']['Ny']
     Nz = inputs['microstructure']['Nz']
@@ -931,7 +873,6 @@ def tortuosity_calculator(domain):
     # points. The random walker is allowed to move in all 26 directions.
     # The function returns the tortuosity of each phase in the domain.
     
-    import numpy as np
     import random
     import concurrent.futures
 
@@ -992,7 +933,6 @@ def tortuosity_calculator(domain):
     return distance
 
 def single_random_walk(domain, start, directions, steps):
-    import numpy as np
     import random
 
     N = domain.shape
@@ -1032,7 +972,6 @@ def segment(phase_mat, sigma):
     from scipy import ndimage as ndi
     from skimage.filters import gaussian
     from skimage.segmentation import watershed
-    import numpy as np
 
     dist_mat = ndi.distance_transform_edt(phase_mat.astype(int))
     dist_mat = gaussian(dist_mat, sigma=sigma, mode='nearest')
@@ -1051,15 +990,15 @@ def segment(phase_mat, sigma):
     
     return labels, volumes, centroids, dist_mat
 
-def infiltration(phase_mat, loading):
-    if loading == 0: return phase_mat
+def infiltration(domain, loading):
+    if loading == 0: return domain
 
-    import numpy as np
     import random
     import scipy.ndimage as ndi
 
     # find the interfacial surface area of the phases
-    isa_12_mat, _, isa_31_mat, _, _, _ = interfacial_surface(phase_mat)
+    isa_12_mat = measure_interface(domain, [1,2])
+    isa_31_mat = measure_interface(domain, [1,3])
 
     # interfacial surface area of pores
     isa_pore = np.logical_or(isa_12_mat, isa_31_mat)
@@ -1073,7 +1012,7 @@ def infiltration(phase_mat, loading):
     indices_infltr = random.sample(range(length_isa), num_points)
 
     # add the infiltration points to the phase matrix
-    phase_inflr = np.zeros(phase_mat.shape, dtype=bool)
+    phase_inflr = np.zeros(domain.shape, dtype=bool)
     for i in range(num_points):
         phase_inflr[
             indices_isa_pore[0][indices_infltr[i]], 
@@ -1086,12 +1025,11 @@ def infiltration(phase_mat, loading):
     dil_inflr = ndi.binary_dilation(phase_inflr, iterations=2).astype(phase_inflr.dtype)
 
     # assign the second phase (pore=1, Ni=2, YSZ=3) to the dilated region
-    phase_mat[np.logical_and(dil_inflr,phase_mat==1)] = 2
+    domain[np.logical_and(dil_inflr,domain==1)] = 2
 
-    return phase_mat
+    return domain
 
 def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True, smallest_geometry=True):
-    import numpy as np
     from scipy.optimize import fsolve
 
     N = voxels
@@ -1154,7 +1092,6 @@ def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True,
     return phase_mat
 
 def compare_circle_circumference(lower_bound, upper_bound):
-    import numpy as np
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
     import plotly.express as px
@@ -1230,7 +1167,6 @@ def compare_circle_circumference(lower_bound, upper_bound):
     return None
 
 def PDF_analysis(scale, probability_value):
-    import numpy as np
     from scipy.stats import norm
     import scipy.integrate as integrate
     from scipy.optimize import fsolve
@@ -1256,22 +1192,30 @@ def PDF_analysis(scale, probability_value):
     fig.show()
     return root
 
-def downscale_phase_matrix(phase_mat, scale):
-    import numpy as np
+def downscale_domain(domain, scale=2):
+    # scale can only be 2, 4, 8, 16, ...
     if scale == 1:
-        return phase_mat
+        return domain
 
     for _ in range(int(np.log(scale)/np.log(2))):
-        mat1 = phase_mat[:-1:2 , :-1:2 , :-1:2].flatten()
-        mat2 = phase_mat[1::2  , :-1:2 , :-1:2].flatten()
-        mat3 = phase_mat[:-1:2 , 1::2  , :-1:2].flatten()
-        mat4 = phase_mat[1::2  , 1::2  , :-1:2].flatten()
-        mat5 = phase_mat[:-1:2 , :-1:2 , 1::2 ].flatten()
-        mat6 = phase_mat[1::2  , :-1:2 , 1::2 ].flatten()
-        mat7 = phase_mat[:-1:2 , 1::2  , 1::2 ].flatten()
-        mat8 = phase_mat[1::2  , 1::2  , 1::2 ].flatten()
-
-        all_mat = np.stack((mat1,mat2,mat3,mat4,mat5,mat6,mat7,mat8), axis=-1)
+        if domain.ndim == 2:
+            mat1 = domain[:-1:2 , :-1:2].flatten()
+            mat2 = domain[1::2  , :-1:2].flatten()
+            mat3 = domain[:-1:2 , 1::2 ].flatten()
+            mat4 = domain[1::2  , 1::2 ].flatten()
+            all_mat = np.stack((mat1,mat2,mat3,mat4), axis=-1)
+        
+        elif domain.ndim == 3:
+            mat1 = domain[:-1:2 , :-1:2 , :-1:2].flatten()
+            mat2 = domain[1::2  , :-1:2 , :-1:2].flatten()
+            mat3 = domain[:-1:2 , 1::2  , :-1:2].flatten()
+            mat4 = domain[1::2  , 1::2  , :-1:2].flatten()
+            mat5 = domain[:-1:2 , :-1:2 , 1::2 ].flatten()
+            mat6 = domain[1::2  , :-1:2 , 1::2 ].flatten()
+            mat7 = domain[:-1:2 , 1::2  , 1::2 ].flatten()
+            mat8 = domain[1::2  , 1::2  , 1::2 ].flatten()
+            all_mat = np.stack((mat1,mat2,mat3,mat4,mat5,mat6,mat7,mat8), axis=-1)
+        
         all_mat_cnt_1 = np.sum(all_mat==1, axis=-1)
         all_mat_cnt_2 = np.sum(all_mat==2, axis=-1)
         all_mat_cnt_3 = np.sum(all_mat==3, axis=-1)
@@ -1291,19 +1235,54 @@ def downscale_phase_matrix(phase_mat, scale):
         # generate random number when phase_mat_ups = 0
         # random number is selected based on the value of upper and lower neighboring voxels
         for i in range(len(indices_zero[0])):
-            rand_num = np.random.choice([phase_mat_ups[indices_zero_up[0][i]], phase_mat_ups[indices_zero_down[0][i]]])
-            j = 1
-            while rand_num == 0:
-                rand_num = np.random.choice([phase_mat_ups[indices_zero_up[0][i]-j], phase_mat_ups[indices_zero_down[0][i]+j]])
-                j += 1
+            try:
+                rand_num = np.random.choice([phase_mat_ups[indices_zero_up[0][i]], phase_mat_ups[indices_zero_down[0][i]]])
+                j = 1
+                while rand_num == 0:
+                    rand_num = np.random.choice([phase_mat_ups[indices_zero_up[0][i]-j], phase_mat_ups[indices_zero_down[0][i]+j]])
+                    j += 1
+            except:
+                rand_num = np.random.choice(np.unique(domain))
             phase_mat_ups[indices_zero[0][i]] = rand_num
 
-        phase_mat = phase_mat_ups.reshape((phase_mat.shape[0]//2,phase_mat.shape[1]//2,phase_mat.shape[2]//2))
+        shape_new = np.array(domain.shape)//2
+        domain = phase_mat_ups.reshape(shape_new)
 
-    return phase_mat
+    return domain
+
+def upscale_domain(domain, scale=2):
+    """
+    This function does not upscale the physical resolution of the domain.
+    Instead it only makes the computational cells smaller. It does not affect the 
+    spatial resolution of the initial image.
+    """
+
+    for _ in range(int(np.log(scale)/np.log(2))):
+        shape_up = np.array(domain.shape)*scale
+        domain_up = np.zeros(shape=shape_up)
+
+        if domain.ndim == 3:
+            domain_up[::2,::2,::2] = domain
+            domain_up[1::2,::2,::2] = domain
+            domain_up[::2,1::2,::2] = domain
+            domain_up[1::2,1::2,::2] = domain
+            domain_up[::2,::2,1::2] = domain
+            domain_up[1::2,::2,1::2] = domain
+            domain_up[::2,1::2,1::2] = domain
+            domain_up[1::2,1::2,1::2] = domain
+        elif domain.ndim == 2:
+            domain_up[::2,::2] = domain
+            domain_up[1::2,::2] = domain
+            domain_up[::2,1::2] = domain
+            domain_up[1::2,1::2] = domain
+
+        domain = domain_up
+
+    return domain
+
+
 
 def measure_covariance(domain,phase=1):
-    import numpy as np
     import plotly.graph_objects as go
 
     domain = domain==phase
@@ -1327,7 +1306,6 @@ def measure_covariance(domain,phase=1):
     return cov
 
 def create_fibre(radius, length):
-    import numpy as np
     fibre = np.zeros(shape=(length,2*radius,2*radius), dtype=int)
     # create i,j,k indices
     i = np.arange(fibre.shape[0])
@@ -1343,8 +1321,6 @@ def create_fibre(radius, length):
     return fibre
 
 def create_twisted_fibre(radius, length, amp=1, freq=1, phase=0, overlap=1):
-    import numpy as np
-    import plotly.graph_objects as go
 
     # create the rod
     # rod radius is increased by overlap
@@ -1352,7 +1328,7 @@ def create_twisted_fibre(radius, length, amp=1, freq=1, phase=0, overlap=1):
     fibre = create_fibre(new_radius, length)
 
     # create the wave function
-    # amp is the amplitude of the wave function relative to the radius of the rod
+    # amp is the amplitude of the wave function relative to the radius of the fibre
     AMP = amp * radius
     phi_1 = phase           # phase shift in the i direction
     phi_2 = phi_1 + np.pi/2 # phase shift in the j direction
@@ -1364,28 +1340,32 @@ def create_twisted_fibre(radius, length, amp=1, freq=1, phase=0, overlap=1):
                  ((0,0),(int(AMP),int(AMP)),(int(AMP),int(AMP))), 
                  'constant', constant_values=0)
 
-    # create the twisted rod
+    # create the twisted fibre
     for i in range(fibre.shape[0]):
         fibre[i,:,:] = np.roll(fibre[i,:,:], wave_1[i].astype(int), axis=0)
         fibre[i,:,:] = np.roll(fibre[i,:,:], wave_2[i].astype(int), axis=1)
 
     return fibre
 
-def create_double_twisted_fibre(radius, length, amp=1, freq=1, overlap=1):
+def create_twisted_multifibre(radius, length, amp=1, freq=1, overlap=1, n_fibres=2):
     # if amp>1 then two twisted fibres are not touching each other.
-    import numpy as np
 
-    fibre_1 = create_twisted_fibre(radius, length, amp, freq, phase=0, overlap=overlap)
-    fibre_2 = create_twisted_fibre(radius, length, amp, freq, phase=np.pi, overlap=overlap)
-    fibre_2[fibre_2==1] = 2 # change the material of the second rod
+    fibres = [None] * n_fibres
+    phase = 0
+    for n in range(n_fibres):
+        fibres[n] = create_twisted_fibre(radius, length, amp, freq, phase=phase, overlap=overlap)
+        fibres[n][fibres[n]==1] = n+1 # change the material of the new fibre
+        phase += 2*np.pi/n_fibres
 
-    fibre = fibre_1 + fibre_2
-    fibre[fibre==3] = 1 # change the material of the overlapping region
+    # fibres = np.sum(fibres, axis=0) # add all the fibres together
+    # fibres[fibres>n_fibres] = 1 # change the material of the overlapping region
+    multi_fibre = np.zeros_like(fibres[0])
+    for n in range(n_fibres):
+        multi_fibre[fibres[n]==n+1] = n+1
 
-    return fibre
+    return multi_fibre
 
 def rotate_3D_image(image, rotation=(0,0,0)):
-    import numpy as np
     from scipy.ndimage import rotate
 
     # M = 10000
@@ -1408,9 +1388,8 @@ def create_fibrous_bed(
         amp = 1, 
         freq = 1, 
         overlap = 1, 
-        rotation_max = (0,0,0)):
-    
-    import numpy as np
+        rotation_max = (0,0,0),
+        bend_max = 1.5):
 
     # initialize the bed
     bed = np.zeros(shape=voxels, dtype=int)
@@ -1418,10 +1397,10 @@ def create_fibrous_bed(
 
     # place each rod randomly in the bed
     while por_bed > target_porosity:
-        rotation = np.random.uniform(-1,1,3)*rotation_max
-        fibre = create_double_twisted_fibre(radius, length, amp, freq, overlap)
-        fibre = rotate_3D_image(fibre, rotation)
-        fibre = bend_fibre(fibre, np.random.uniform(low=1, high=1.5))
+        fibre = create_twisted_multifibre(radius, length, amp, freq, overlap)
+        if bend_max > 1:
+            fibre = bend_fibre(fibre, bending_factor=np.random.uniform(low=1, high=bend_max), flip=np.random.choice([True, False]))
+        fibre = rotate_3D_image(fibre, rotation=np.random.uniform(-1,1,3)*rotation_max)
 
         # find a random position in the bed
         i = np.random.randint(0, bed.shape[0])
@@ -1477,7 +1456,6 @@ def create_fibrous_bed(
     return bed
 
 def put_fibre_in_bed(fibre, f_mask, bed, start_eff, end_eff):
-    import numpy as np
 
     # These are effective start and end points of the fibre
     i1, j1, k1 = start_eff
@@ -1537,8 +1515,7 @@ def put_fibre_in_bed(fibre, f_mask, bed, start_eff, end_eff):
     bed[bed>2] = np.random.choice([1,2])
     return bed
 
-def bend_fibre(fibre,bending_factor):
-    import numpy as np
+def bend_fibre(fibre, bending_factor, flip=False):
     
     bf = int(bending_factor*fibre.shape[1])
     # pad the fibre domain
@@ -1552,4 +1529,122 @@ def bend_fibre(fibre,bending_factor):
     for i in range(length):
         fibre[i,...] = np.roll(fibre[i,...], wave[i].astype(int), axis=0)
 
+    if flip:
+        fibre = np.flip(fibre, axis=1)
+        
     return fibre
+
+def add_roughness(domain_smooth, d_rough, labels=[1,2]):
+    from scipy.ndimage.morphology import binary_dilation
+
+    prob = 1/(d_rough*1.5)      # probability of initial roughness points
+    R = d_rough//2            # radius of roughness points
+
+    rng_0 = np.random.default_rng(seed=16)
+    rng_1 = np.random.default_rng(seed=25)
+    
+    # extract the label values from domain
+    domain_rough_0 = np.zeros_like(domain_smooth, dtype=bool)
+    domain_rough_0[domain_smooth==labels[0]] = True 
+
+    domain_rough_1 = np.zeros_like(domain_smooth, dtype=bool)
+    domain_rough_1[domain_smooth==labels[1]] = True 
+
+    domain_both_labels = np.zeros_like(domain_smooth, dtype=bool)
+    domain_both_labels[np.logical_or(domain_rough_0,domain_rough_1)] = True
+    
+    if domain_smooth.ndim==2:
+        struct = np.zeros((2*R+1,2*R+1), dtype=bool)
+        I,J = np.indices(struct.shape)
+        struct[(I-R)**2+(J-R)**2<=R**2] = True
+    elif domain_smooth.ndim==3:
+        struct = np.zeros((2*R+1,2*R+1,2*R+1), dtype=bool)
+        I,J,K = np.indices(struct.shape)
+        struct[(I-R)**2+(J-R)**2+(K-R)**2<=R**2] = True
+    
+    surf_thin = measure_interface(domain_smooth, labels = labels)
+
+    # randomly add roughness on the thin surface
+    added_pts_0 = np.zeros_like(surf_thin, dtype=bool)
+    added_pts_0[surf_thin] = rng_0.choice([False,True], size=surf_thin[surf_thin].size, p=[1-prob/2,prob/2])
+    added_pts_0 = binary_dilation(added_pts_0, structure=struct)
+    domain_rough_0 = np.logical_or(domain_rough_0,added_pts_0)
+
+    added_pts_1 = np.zeros_like(surf_thin, dtype=bool)
+    added_pts_1[surf_thin] = rng_1.choice([False,True], size=surf_thin[surf_thin].size, p=[1-prob/2,prob/2])
+    added_pts_1 = binary_dilation(added_pts_1, structure=struct)
+    domain_rough_1 = np.logical_or(domain_rough_1,added_pts_1)
+    
+    final_rough = np.zeros(shape = domain_rough_0.shape, dtype=int)
+    final_rough[np.logical_and(domain_rough_0,~domain_rough_1)] = labels[0]
+    final_rough[np.logical_and(domain_rough_1,~domain_rough_0)] = labels[1] 
+    final_rough[np.logical_and(added_pts_0,final_rough==0)] = labels[0]
+    final_rough[np.logical_and(added_pts_1,final_rough==0)] = labels[1]
+
+    final_rough[~domain_both_labels] = domain_smooth[~domain_both_labels]
+
+    return final_rough
+
+def add_roughness_all_phases(domain_smooth, labels=None, iteration=1, d_rough=6):
+    if labels is None:
+
+        labels = [[1,2],[1,3],[2,3]] if len(np.unique(domain_smooth))==3 else [[1,2]]
+    else:
+        labels = [labels]
+
+    domain_rough = domain_smooth
+    D = d_rough
+
+    for _ in range(iteration):
+        
+        for l in labels:
+            domain_rough = add_roughness(
+                domain_rough, 
+                labels=l,  
+                d_rough=D)
+            
+        D = D//2
+    
+    return domain_rough
+
+def measure_interface(domain, labels=None, output='binary'):
+    from scipy.ndimage.morphology import binary_dilation
+    
+    if labels is None:
+        labels = list(np.unique(domain)[:-1])
+    
+    interface = np.logical_xor(
+        binary_dilation(domain==labels[0]), 
+        domain==labels[0])
+    
+    if len(labels) == 2:
+        interface = np.logical_and(
+            interface, 
+            domain==labels[1]) 
+
+    if output == 'binary':
+        pass
+    elif output == 'nans':
+        interface = interface.astype(float)
+        interface[interface==0] = np.nan
+
+    return interface
+
+def create_circle(diameter, output='total'):
+    I,J = np.indices((diameter,diameter))
+    circle = np.zeros((diameter,diameter))+1
+    circle[(I-diameter//2)**2+(J-diameter//2)**2 <= (diameter//2)**2] = 2
+    
+    # pad the circle
+    circle = np.pad(circle,
+                    ((diameter//10,diameter//10),(diameter//10,diameter//10)),
+                    'constant', constant_values=1)
+    
+    N = circle.shape[0]
+    if output == 'total':
+        return circle
+    elif output == 'half':
+        return circle[N//2:,:]
+    elif output == 'quarter':
+        return circle[N//2:,:N//2]
+    
