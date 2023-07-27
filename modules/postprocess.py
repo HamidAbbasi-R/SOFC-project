@@ -1,6 +1,6 @@
+import numpy as np
 def visualize_residuals(inputs, residuals):
     import pandas as pd
-    import numpy as np
     import plotly.express as px
 
     # visualize the error
@@ -23,7 +23,6 @@ def visualize_residuals(inputs, residuals):
 
 def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
     # visualize the solution
-    import numpy as np
 
     img_flag = inputs['output_options']['img_output']
     csv_flag = inputs['output_options']['csv_output']
@@ -170,7 +169,6 @@ def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
 
 def create_TPB_field_variable_individual(phi_dense, indices, masks_dict, func):
     # visualize a function on the TPB
-    import numpy as np
     N = phi_dense.shape
     ds = masks_dict['ds']
 
@@ -282,7 +280,6 @@ def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_
         fig.write_html(file_dir)
 
 def mean_confidence_interval(data, confidence=0.95):
-    import numpy as np
     import scipy.stats
     a = 1.0 * np.array(data)
     n = len(a)
@@ -291,7 +288,6 @@ def mean_confidence_interval(data, confidence=0.95):
     return m-h, m+h
 
 def create_field_variable_individual(N, phi, indices, func):
-    import numpy as np
     field_mat = np.zeros(shape = N)
 
     for n in indices['interior']:
@@ -304,7 +300,6 @@ def create_field_variable_individual(N, phi, indices, func):
 def save_image(phase_mat):
     
     from tqdm import tqdm
-    import numpy as np
     import imageio
     
     phase_1 = np.zeros(shape=phase_mat.shape)
@@ -330,14 +325,13 @@ def visualize_mesh(
         TPB_mesh=[], 
         log_scale=None, 
         animation='none',
-        save_html=False,):
+        save_graphics=None,):
     """
     Visualizes the mesh via PyVista.
     inputs:
     mat : float
         Three dimensional matrix describing the phase data. It could be list 
     """
-    import numpy as np
     import pyvista as pv
     import matplotlib.pyplot as plt
     
@@ -376,11 +370,11 @@ def visualize_mesh(
             p.add_mesh(mesh, scalar_bar_args=sargs, log_scale=scale, cmap=cmap)#, show_edges=True)
             if bool(titles):
                 p.add_text(titles[i], font_size=20, position='lower_edge')
-            if bool(TPB_mesh):
-                p.add_mesh(TPB_mesh, line_width=1, color='r')
+        if bool(TPB_mesh):
+            p.add_mesh(TPB_mesh, line_width=5, color='r')
                 # for j in range(len(TPB_mesh)):
                     # p.add_mesh(TPB_mesh[j], line_width=3, color='k')
-        p.add_bounding_box(line_width=1, color='black')
+        # p.add_bounding_box(line_width=1, color='black')
         # p.add_axes(line_width=5, labels_off=True)
 
 
@@ -394,8 +388,7 @@ def visualize_mesh(
     p.camera_position = 'xy'
     # p.show_grid()
     # p.enable_parallel_projection()
-    if save_html:
-        p.export_html("img.html")
+
 
     if animation != 'none':
         p.open_movie("Binary files/animation.mp4")
@@ -426,12 +419,17 @@ def visualize_mesh(
                 p.write_frame()
             p.close()
     elif animation == 'none':
+        p.camera.elevation = 0
+        p.camera.azimuth = 0
+        if save_graphics=='pdf':
+            p.save_graphic("img.pdf")
+        elif save_graphics=='html':
+            p.export_html("img.html")
         # pv.set_jupyter_backend('trame')
         p.show()
     return None
     
 def visualize_network(volumes, centroids, M=1):
-    import numpy as np
     import pyvista as pv
     
     blocks = pv.MultiBlock()
@@ -444,7 +442,6 @@ def visualize_network(volumes, centroids, M=1):
     return blocks
 
 def visualize_contour(mat, n_levels=5):
-    import numpy as np
     import pyvista as pv
     import matplotlib.pyplot as plt
 
@@ -496,7 +493,6 @@ def close_to_edge(N, i,j,k):
 # specific functions for entire cell
 def visualize_3D_matrix_entire_cell(inputs, phi_dense, masks_dict, TPB_dict, titles, cH2=None, Vel_a=None, Vio=None, cO2=None, Vel_c=None, field_mat=None, TPB_mat=None):
     # visualize the solution
-    import numpy as np
     import pyvista as pv
     import pandas as pd
     import plotly.express as px
@@ -564,7 +560,6 @@ def visualize_3D_matrix_entire_cell(inputs, phi_dense, masks_dict, TPB_dict, tit
         plot_with_continuous_error(x, Vio_lin, Vio_max, Vio_min, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title='Hydrogen concentration (kgm-3)')
 
 def create_dense_matrices(inputs, phi, masks_dict, indices, field_functions, TPB_dict):
-    import numpy as np
     write_arrays = inputs['output_options']['write_arrays']
     ds = masks_dict['ds']
     N = ds[0].shape
@@ -630,3 +625,49 @@ def create_directory(dir):
     import os
     if not os.path.exists(dir):
         os.makedirs(dir)
+
+def plot_domain(domains, gap=0, qualitative=True, save=False):
+    import plotly.graph_objects as go
+    import plotly.express as px
+    from plotly.subplots import make_subplots
+    import plotly.io as pio
+    pio.renderers.default = "browser"
+
+    # number of domains
+    N = len(domains)
+
+    # range of colorscale
+    zmin = min([np.nanmin(d) for d in domains]).astype(int)
+    zmax = max([np.nanmax(d) for d in domains]).astype(int)
+
+    # choose a qualitiative colormap from zmin to zmax
+    if qualitative:
+        if zmin == zmax:
+            colorscale = px.colors.qualitative.G10
+        else:
+            colorscale = [px.colors.qualitative.G10[i] for i in np.arange(zmax-zmin+1)]
+    else:
+        colorscale = 'Viridis'
+        
+    # create figure
+    fig = make_subplots(rows=1, cols=N, )
+    for n in range(N):
+        fig.append_trace(go.Heatmap(z=domains[n], xgap=gap, ygap=gap, zmin=zmin, zmax=zmax, colorscale=colorscale, showscale=False), row=1, col=n+1)
+        # scaleanchor = "x" if shared_axis else f"x{n+1}"
+        fig.update_yaxes(
+            scaleanchor=f"x{n+1}",
+            scaleratio=1,
+            row=1, col=n+1
+            )
+        # scaleanchor = "y" if shared_axis else f"y{n+1}"
+        # fig.update_xaxes(
+        #     scaleanchor=scaleanchor,
+        #     scaleratio=1,
+        #     row=1, col=n+1
+        #     )
+    
+    fig.show()
+    if save:
+        fig.write_image("fig1.svg")
+
+    
