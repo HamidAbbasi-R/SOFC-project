@@ -700,22 +700,22 @@ def create_microstructure(inputs, display=False):
             domain = domain[:voxels[0],:,:]
     
     elif flag_fibrous:
-        length = int(inputs['microstructure']['fibrous_bed']['length']/dx)
+        fibre_length = int(inputs['microstructure']['fibrous_bed']['fibre_length']/dx)
         radius = int(d_ave/2/dx)
-        amp = inputs['microstructure']['fibrous_bed']['amplitude']
         freq = inputs['microstructure']['fibrous_bed']['frequency']
         overlap = inputs['microstructure']['fibrous_bed']['overlap']
         rot_max = inputs['microstructure']['fibrous_bed']['rotation_max']
+        bend_max = inputs['microstructure']['fibrous_bed']['bend_max']
         target_porosity = vol_frac[0]
         domain = create_fibrous_bed(
             voxels = voxels,
             radius = radius, 
-            length = length, 
+            fibre_length = fibre_length, 
             target_porosity = target_porosity,
-            amp = amp, 
             freq = freq, 
             overlap = overlap, 
-            rotation_max = rot_max)
+            rotation_max = rot_max,
+            bend_max = bend_max)
 
     domain = infiltration(domain, infiltration_loading)
 
@@ -729,7 +729,7 @@ def create_microstructure(inputs, display=False):
     print('Done!')
     return domain
 
-def topological_operations(inputs, domain, show_TPB=False):
+def topological_operations(inputs, domain_old, show_TPB=False):
     """
     domain topological operations
     """
@@ -740,11 +740,15 @@ def topological_operations(inputs, domain, show_TPB=False):
     # from scipy.io import savemat
     # savemat('domain.mat', {'domain': domain})
     
-    domain = remove_thin_boundaries(domain.astype(float))
+    domain_old = remove_thin_boundaries(domain_old.astype(float))
     # extract the domain that should be solved. ds is short for Domain for Solver.
     # when periodic boundary condition is used, percolation analysis should not be done.
-    domain, _, _ = percolation_analysis(domain)
+    domain, _, _ = percolation_analysis(domain_old)
 
+    percolation_percentage =[None] * 3
+    for i in range(3):
+        percolation_percentage[i] = np.sum(domain==i+1) / np.sum(domain_old==i+1)
+    
     # measure covariance
     # cov = measure_covariance(domain, phase=1)
     
@@ -765,6 +769,16 @@ def topological_operations(inputs, domain, show_TPB=False):
         TPB_mesh = pv.PolyData(vertices, lines=lines)
         from modules.postprocess import visualize_mesh as vm
         vm([domain], [(2,3)], TPB_mesh=TPB_mesh)#, animation='rotation')
+                 
+    if inputs['image_analysis_only']:
+        np.savez(
+            f'Binary files/image analysis/image_{inputs["file_options"]["id"]}.npz',
+            domain=domain,
+            TPB_mask=TPB_mask,
+            TPB_density=TPB_density,
+            vertices=vertices,
+            lines=lines,
+            percolation_percentage=percolation_percentage,)
 
     # tortuosity_calculator(domain)
     return domain, TPB_dict
@@ -1347,13 +1361,13 @@ def create_twisted_fibre(radius, length, amp=1, freq=1, phase=0, overlap=1):
 
     return fibre
 
-def create_twisted_multifibre(radius, length, amp=1, freq=1, overlap=1, n_fibres=2):
+def create_twisted_multifibre(radius, fibre_length, amp=1, freq=1, overlap=1, n_fibres=2):
     # if amp>1 then two twisted fibres are not touching each other.
 
     fibres = [None] * n_fibres
     phase = 0
     for n in range(n_fibres):
-        fibres[n] = create_twisted_fibre(radius, length, amp, freq, phase=phase, overlap=overlap)
+        fibres[n] = create_twisted_fibre(radius, fibre_length, amp, freq, phase=phase, overlap=overlap)
         fibres[n][fibres[n]==1] = n+1 # change the material of the new fibre
         phase += 2*np.pi/n_fibres
 
@@ -1368,22 +1382,17 @@ def create_twisted_multifibre(radius, length, amp=1, freq=1, overlap=1, n_fibres
 def rotate_3D_image(image, rotation=(0,0,0)):
     from scipy.ndimage import rotate
 
-    # M = 10000
-    # image *= M
-    image = rotate(image, rotation[0], axes=(1,2), prefilter=True)
-    image = rotate(image, rotation[1], axes=(0,2), prefilter=True)
-    image = rotate(image, rotation[2], axes=(0,1), prefilter=True)
+    image = rotate(image, rotation[0], axes=(1,2), order=0, prefilter=True)
+    image = rotate(image, rotation[1], axes=(0,2), order=0, prefilter=True)
+    image = rotate(image, rotation[2], axes=(0,1), order=0, prefilter=True)
     image = image.astype(int)
-    # image[image<0.5*M] = 0
-    # image[np.logical_and(image>0.5*M, image<1.5*M)] = 1
-    # image[image>1.5*M] = 2
 
     return image
 
 def create_fibrous_bed(
         voxels,
         radius, 
-        length, 
+        fibre_length, 
         target_porosity,
         amp = 1, 
         freq = 1, 
@@ -1397,7 +1406,7 @@ def create_fibrous_bed(
 
     # place each rod randomly in the bed
     while por_bed > target_porosity:
-        fibre = create_twisted_multifibre(radius, length, amp, freq, overlap)
+        fibre = create_twisted_multifibre(radius, fibre_length, amp, freq, overlap)
         if bend_max > 1:
             fibre = bend_fibre(fibre, bending_factor=np.random.uniform(low=1, high=bend_max), flip=np.random.choice([True, False]))
         fibre = rotate_3D_image(fibre, rotation=np.random.uniform(-1,1,3)*rotation_max)
