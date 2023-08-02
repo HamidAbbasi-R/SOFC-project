@@ -368,13 +368,13 @@ def visualize_mesh(
             p.add_mesh_clip_plane(mesh, scalar_bar_args={'title': f'Phase{i+1}'}, cmap=cmap)
         else:
             p.add_mesh(mesh, scalar_bar_args=sargs, log_scale=scale, cmap=cmap)#, show_edges=True)
+            p.add_bounding_box(line_width=1, color='black')
             if bool(titles):
                 p.add_text(titles[i], font_size=20, position='lower_edge')
         if bool(TPB_mesh):
             p.add_mesh(TPB_mesh, line_width=5, color='r')
                 # for j in range(len(TPB_mesh)):
                     # p.add_mesh(TPB_mesh[j], line_width=3, color='k')
-        # p.add_bounding_box(line_width=1, color='black')
         # p.add_axes(line_width=5, labels_off=True)
 
 

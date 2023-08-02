@@ -669,13 +669,14 @@ def create_microstructure(inputs, display=False):
 
     # create the entire domain
     if flag_lattice:
+        flag_smallest_lattice = inputs['microstructure']['lattice_geometry']['smallest_lattice']
         domain = create_microstructure_lattice(
             vol_frac, 
             dx, 
             voxels, 
             d_ave,
             offset=True,
-            smallest_geometry=True)
+            smallest_lattice=flag_smallest_lattice)
     
     elif flag_plurigaussian:
         seed = inputs['microstructure']['plurigaussian']['seed']
@@ -768,18 +769,22 @@ def topological_operations(inputs, domain_old, show_TPB=False):
         import pyvista as pv
         TPB_mesh = pv.PolyData(vertices, lines=lines)
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(2,3)], TPB_mesh=TPB_mesh)#, animation='rotation')
+        vm([domain], [(2,2)], TPB_mesh=TPB_mesh)#, animation='rotation')
                  
-    if inputs['image_analysis_only']:
-        np.savez(
-            f'Binary files/image analysis/image_{inputs["file_options"]["id"]}.npz',
-            domain=domain,
-            TPB_mask=TPB_mask,
-            TPB_density=TPB_density,
-            vertices=vertices,
-            lines=lines,
-            percolation_percentage=percolation_percentage,)
+    # if inputs['solver_options']['image_analysis_only']:
+    #     np.savez(
+    #         f'Binary files/image analysis/image_{inputs["file_options"]["id"]}.npz',
+    #         domain=domain,
+    #         TPB_mask=TPB_mask,
+    #         TPB_density=TPB_density,
+    #         vertices=vertices,
+    #         lines=lines,
+    #         percolation_percentage=percolation_percentage,)
 
+    # print percolation percentage and TPB density with three significant digits
+    print(f'TPB density: \n{TPB_density/1e12:.3f}')
+    print(f'Percolation percentage:\n{percolation_percentage[0]:.3f}, {percolation_percentage[1]:.3f}, {percolation_percentage[2]:.3f}')
+    
     # tortuosity_calculator(domain)
     return domain, TPB_dict
 
@@ -1043,7 +1048,7 @@ def infiltration(domain, loading):
 
     return domain
 
-def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True, smallest_geometry=True):
+def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True, smallest_lattice=True):
     from scipy.optimize import fsolve
 
     N = voxels
@@ -1057,7 +1062,7 @@ def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True,
     vf_particle = vol_frac[1] + vol_frac[2]
 
     if vf_particle < np.pi/6 or vf_particle > 0.965:
-        raise ValueError('For ordered lattice microstructure, particle volume fraction should be between 0.5236 and 0.965!')
+        raise ValueError('For ordered lattice microstructures, particle volume fraction (Ni+YSZ) should be between 0.5236 and 0.965!')
     
     def find_vf(f0):
         f = 4/3*np.pi*(1 - 9/2*f0**2 + 3/2*f0**3)/8/(1-f0)**3 - vf_particle
@@ -1079,7 +1084,7 @@ def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True,
     phase_mat_lat[:,N_lat:,:N_lat][dist_center_mat < r] = 2
     phase_mat_lat[:,:N_lat,N_lat:][dist_center_mat < r] = 2
 
-    if smallest_geometry:
+    if smallest_lattice:
         N[1] = phase_mat_lat.shape[1]
         N[2] = phase_mat_lat.shape[2]
 
@@ -1528,9 +1533,9 @@ def bend_fibre(fibre, bending_factor, flip=False):
     
     bf = int(bending_factor*fibre.shape[1])
     # pad the fibre domain
-    fibre = np.pad(fibre,
-                        ((0,0),(0,bf),(0,0)),
-                        'constant', constant_values=0)
+    fibre = np.pad(
+        fibre,((0,0),(0,bf),(0,0)),
+        'constant', constant_values=0)
     
     # bend the fibre using np.roll
     length = fibre.shape[0]
