@@ -351,7 +351,7 @@ def visualize_mesh(
         sub_mat = mat[i]
         N=sub_mat.shape
         # Initializing grids
-        mesh = pv.UniformGrid(dims=(N[0]+1,N[1]+1,N[2]+1))
+        mesh = pv.ImageData(dimensions=(N[0]+1,N[1]+1,N[2]+1))
         
         # Assigning values to grids
         mesh.cell_data["data"] = sub_mat.T.flatten()
@@ -419,8 +419,9 @@ def visualize_mesh(
                 p.write_frame()
             p.close()
     elif animation == 'none':
-        p.camera.elevation = 0
-        p.camera.azimuth = 0
+        p.camera.clipping_range = (1e-2, 1e3)
+        p.camera.elevation = 30.1
+        p.camera.azimuth = 60.1
         if save_graphics=='pdf':
             p.save_graphic("img.pdf")
         elif save_graphics=='html':
@@ -451,7 +452,7 @@ def visualize_contour(mat, n_levels=5):
     N=mat.shape[0]
 
     # Initializing grids
-    mesh = pv.UniformGrid(dims=(N+1,N+1,N+1))
+    mesh = pv.ImageData(dimensions=(N+1,N+1,N+1))
     mesh.cell_data["data"] = mat.flatten()
     mesh = mesh.threshold()
     mesh = mesh.cell_data_to_point_data()
@@ -464,7 +465,7 @@ def visualize_contour(mat, n_levels=5):
     # solid = np.zeros_like(mat)
     # solid[np.isnan(mat)] = 1
     # solid[~np.isnan(mat)] = np.nan
-    # mesh_s = pv.UniformGrid(dims=(N+1,N+1,N+1))
+    # mesh_s = pv.ImageData(dimensions=(N+1,N+1,N+1))
     # mesh_s.cell_data["data"] = solid.flatten()
     # mesh_s = mesh_s.threshold()
     # cmap = plt.cm.get_cmap("Greys")

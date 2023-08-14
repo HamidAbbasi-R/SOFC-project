@@ -162,7 +162,7 @@ def create_microstructure_plurigaussian(
     elif display==True and dim==3:
         # from postprocess import visualize_mesh
         from modules.postprocess import visualize_mesh as vm 
-        vm([phase_mat],[()], clip_widget=False)
+        vm([phase_mat],[(2,3)])
 
     # display the histogram of the smooth matrices
     if histogram=='1D':
@@ -209,7 +209,7 @@ def create_microstructure_plurigaussian(
         fig.show()
     return phase_mat
 
-def measure_TPB(phase_mat, dx):
+def measure_TPB(domain, dx):
     """
     this function is used to measure the triple phase boundary (TPB). it is written in 
     vectorized form. so the runtime is extremely faster than non-vectorized version.
@@ -237,17 +237,17 @@ def measure_TPB(phase_mat, dx):
     # phase_mat, _, _= percolation_analysis(phase_mat)
 
     # print("Extracting TPB...", end='')
-    N=phase_mat.shape
+    N=domain.shape
     TPBs = np.empty((0,6), int)
-    TPB_mask = np.zeros_like(phase_mat, dtype=bool)
+    TPB_mask = np.zeros_like(domain, dtype=bool)
 
     # loop through the x axis     
     for i in np.arange(N[0]):
         # create four sliced 2D matrices in each i index
-        mat_1 = phase_mat[i , 0:-1 , 0:-1 ].flatten()
-        mat_2 = phase_mat[i , 0:-1 , 1:   ].flatten()
-        mat_3 = phase_mat[i , 1:   , 0:-1 ].flatten()
-        mat_4 = phase_mat[i , 1:   , 1:   ].flatten()
+        mat_1 = domain[i , 0:-1 , 0:-1 ].flatten()
+        mat_2 = domain[i , 0:-1 , 1:   ].flatten()
+        mat_3 = domain[i , 1:   , 0:-1 ].flatten()
+        mat_4 = domain[i , 1:   , 1:   ].flatten()
 
         # concatanate the sliced matrices
         mat_cumulative = np.stack((mat_1,mat_2,mat_3,mat_4), axis=-1)
@@ -289,10 +289,10 @@ def measure_TPB(phase_mat, dx):
 
     for j in np.arange(N[1]):
         # create four sliced 2D matrices in each j index
-        mat_1 = phase_mat[0:-1 , j , 0:-1 ].flatten()
-        mat_2 = phase_mat[0:-1 , j , 1:   ].flatten()
-        mat_3 = phase_mat[1:   , j , 0:-1 ].flatten()
-        mat_4 = phase_mat[1:   , j , 1:   ].flatten()
+        mat_1 = domain[0:-1 , j , 0:-1 ].flatten()
+        mat_2 = domain[0:-1 , j , 1:   ].flatten()
+        mat_3 = domain[1:   , j , 0:-1 ].flatten()
+        mat_4 = domain[1:   , j , 1:   ].flatten()
 
         # concatanate the sliced matrices
         mat_cumulative = np.stack((mat_1,mat_2,mat_3,mat_4), axis=-1)
@@ -334,10 +334,10 @@ def measure_TPB(phase_mat, dx):
                     
     for k in np.arange(N[2]):
         # create four sliced 2D matrices in each k index
-        mat_1 = phase_mat[0:-1 , 0:-1 , k].flatten()
-        mat_2 = phase_mat[0:-1 , 1:   , k].flatten()
-        mat_3 = phase_mat[1:   , 0:-1 , k].flatten()
-        mat_4 = phase_mat[1:   , 1:   , k].flatten()
+        mat_1 = domain[0:-1 , 0:-1 , k].flatten()
+        mat_2 = domain[0:-1 , 1:   , k].flatten()
+        mat_3 = domain[1:   , 0:-1 , k].flatten()
+        mat_4 = domain[1:   , 1:   , k].flatten()
 
         # concatanate the sliced matrices
         mat_cumulative = np.stack((mat_1,mat_2,mat_3,mat_4), axis=-1)
@@ -377,15 +377,6 @@ def measure_TPB(phase_mat, dx):
         TPB_mask[:,:,k] = np.logical_or(TPBs_expanded, TPB_mask[:,:,k])
         # TPB_mask[:,:,k] = TPBs_expanded
 
-    # This section needs revision, there must be some ways to get rid of the nested
-    # loops and make the run faster. It is not a big deal however.
-    count = 0
-    vertices = np.ones(shape=((N[0]+1)*(N[1]+1)*(N[2]+1),3))
-    for i in np.arange(N[0]+1):
-        for j in np.arange(N[1]+1):
-            for k in np.arange(N[2]+1):
-                vertices[count,:] = [i,j,k]
-                count += 1
     
     # create the lines connecting TPBs. Since all of the lines has length 2, the first element of 
     # the matrix "lines" must be 2 for all rows.
@@ -404,7 +395,14 @@ def measure_TPB(phase_mat, dx):
     # measure the density of TPBs in the structure. [m/m^3]
     TPB_density = len(TPBs)*dx / (N[0]*N[1]*N[2]*dx**3)
     # print('Done!')
-    return TPB_mask, TPB_density, vertices, lines
+
+    # measure the length distrubition of TPBs in the X direction (i)
+    TPB_mean_location_i = np.floor(np.mean(i,axis=1))
+    TPB_dist_x = np.zeros(shape=domain.shape[0])
+    for i in range(domain.shape[0]):
+        TPB_dist_x[i] = np.sum(TPB_mean_location_i==i) * dx / (N[1]*N[2]*dx**2)     # [m/m^2]
+
+    return TPB_mask, TPB_density, lines, TPB_dist_x
 
 def measure_TPB_notvec(phase_mat):
     """
@@ -725,12 +723,12 @@ def create_microstructure(inputs, display=False):
 
     if display:
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(2,3)], animation='none')
+        vm([domain], [(2,3)])
 
     print('Done!')
     return domain
 
-def topological_operations(inputs, domain_old, show_TPB=False):
+def topological_operations(inputs, domain_old, show_TPB=False, show_TPB_variations=False):
     """
     domain topological operations
     """
@@ -755,31 +753,52 @@ def topological_operations(inputs, domain_old, show_TPB=False):
     
     # measure the triple phase boundary and create a mask for source term
     dx = inputs['microstructure']['dx']
-    TPB_mask, TPB_density, vertices, lines = measure_TPB(domain, dx)
+    TPB_mask, TPB_density, lines, TPB_dist_x = measure_TPB(domain, dx)
+
+    # convert float to integer
+    domain = domain.astype(int)
+    lines = lines.astype(int)
+    
     print("Done!")
 
     TPB_dict = {
         'TPB_mask': TPB_mask,
         'TPB_density': TPB_density,
-        'vertices': vertices,
-        'lines': lines
+        'lines': lines,
+        'TPB_dist_x': TPB_dist_x
     }
 
     if show_TPB:
         import pyvista as pv
-        TPB_mesh = pv.PolyData(vertices, lines=lines)
+        TPB_mesh = pv.PolyData(create_vertices_in_uniform_grid(domain.shape), lines=lines)
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(2,2)], TPB_mesh=TPB_mesh)#, animation='rotation')
-                 
-    # if inputs['solver_options']['image_analysis_only']:
-    #     np.savez(
-    #         f'Binary files/image analysis/image_{inputs["file_options"]["id"]}.npz',
-    #         domain=domain,
-    #         TPB_mask=TPB_mask,
-    #         TPB_density=TPB_density,
-    #         vertices=vertices,
-    #         lines=lines,
-    #         percolation_percentage=percolation_percentage,)
+        vm([domain], [(2,3)], TPB_mesh=TPB_mesh, animation='none')
+
+    # plot the variation of TPB density along the X direction
+    if show_TPB_variations:
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=np.arange(domain.shape[0])*dx, y=TPB_dist_x, mode='lines+markers'))
+        fig.update_layout(
+            title="Variation of TPB density along X direction",
+            xaxis_title="X [m]",
+            yaxis_title="number of TPB elements",
+            )
+        fig.show()
+
+    if inputs['solver_options']['image_analysis_only']:
+        np.savez(
+            f'Binary files/image analysis/domain_{inputs["file_options"]["id"]}.npz',
+            domain=domain,
+            TPB_mask=TPB_mask,
+            lines=lines,
+            )
+        np.savez(
+            f'Binary files/image analysis/scalars_{inputs["file_options"]["id"]}.npz',
+            TPB_density=TPB_density,
+            percolation_percentage=percolation_percentage,
+            TPB_dist_x=TPB_dist_x,
+            )
 
     # print percolation percentage and TPB density with three significant digits
     print(f'TPB density: \n{TPB_density/1e12:.3f}')
@@ -1470,7 +1489,7 @@ def create_fibrous_bed(
     return bed
 
 def put_fibre_in_bed(fibre, f_mask, bed, start_eff, end_eff):
-
+    cof = correct_overlapping_fibres
     # These are effective start and end points of the fibre
     i1, j1, k1 = start_eff
     i2, j2, k2 = end_eff
@@ -1486,47 +1505,45 @@ def put_fibre_in_bed(fibre, f_mask, bed, start_eff, end_eff):
         bed[f_mask] += fibre.flatten()
 
     elif i1>i2 and j1<j2 and k1<k2:
-        bed[i1:,j1:j2,k1:k2][f_mask[i1:,j1:j2,k1:k2]] += fibre[:N[0]-i1,:,:].flatten()
-        bed[:i2,j1:j2,k1:k2][f_mask[:i2,j1:j2,k1:k2]] += fibre[N[0]-i1:,:,:].flatten()
+        bed[i1:,j1:j2,k1:k2][f_mask[i1:,j1:j2,k1:k2]] = cof(bed[i1:,j1:j2,k1:k2][f_mask[i1:,j1:j2,k1:k2]], fibre[:N[0]-i1,:,:].flatten())
+        bed[:i2,j1:j2,k1:k2][f_mask[:i2,j1:j2,k1:k2]] = cof(bed[:i2,j1:j2,k1:k2][f_mask[:i2,j1:j2,k1:k2]], fibre[N[0]-i1:,:,:].flatten())
     
     elif i1<i2 and j1>j2 and k1<k2:
-        bed[i1:i2,j1:,k1:k2][f_mask[i1:i2,j1:,k1:k2]] += fibre[:,:N[1]-j1,:].flatten()
-        bed[i1:i2,:j2,k1:k2][f_mask[i1:i2,:j2,k1:k2]] += fibre[:,N[1]-j1:,:].flatten()
+        bed[i1:i2,j1:,k1:k2][f_mask[i1:i2,j1:,k1:k2]] = cof(bed[i1:i2,j1:,k1:k2][f_mask[i1:i2,j1:,k1:k2]], fibre[:,:N[1]-j1,:].flatten())
+        bed[i1:i2,:j2,k1:k2][f_mask[i1:i2,:j2,k1:k2]] = cof(bed[i1:i2,:j2,k1:k2][f_mask[i1:i2,:j2,k1:k2]], fibre[:,N[1]-j1:,:].flatten())
     
     elif i1<i2 and j1<j2 and k1>k2:
-        bed[i1:i2,j1:j2,k1:][f_mask[i1:i2,j1:j2,k1:]] += fibre[:,:,:N[2]-k1].flatten()
-        bed[i1:i2,j1:j2,:k2][f_mask[i1:i2,j1:j2,:k2]] += fibre[:,:,N[2]-k1:].flatten()
+        bed[i1:i2,j1:j2,k1:][f_mask[i1:i2,j1:j2,k1:]] = cof(bed[i1:i2,j1:j2,k1:][f_mask[i1:i2,j1:j2,k1:]], fibre[:,:,:N[2]-k1].flatten())
+        bed[i1:i2,j1:j2,:k2][f_mask[i1:i2,j1:j2,:k2]] = cof(bed[i1:i2,j1:j2,:k2][f_mask[i1:i2,j1:j2,:k2]], fibre[:,:,N[2]-k1:].flatten())
     
     elif i1>i2 and j1>j2 and k1<k2:
-        bed[i1:,j1:,k1:k2][f_mask[i1:,j1:,k1:k2]] += fibre[:N[0]-i1,:N[1]-j1,:].flatten()
-        bed[:i2,:j2,k1:k2][f_mask[:i2,:j2,k1:k2]] += fibre[N[0]-i1:,N[1]-j1:,:].flatten()
-        bed[i1:,:j2,k1:k2][f_mask[i1:,:j2,k1:k2]] += fibre[:N[0]-i1,N[1]-j1:,:].flatten()
-        bed[:i2,j1:,k1:k2][f_mask[:i2,j1:,k1:k2]] += fibre[N[0]-i1:,:N[1]-j1,:].flatten()
+        bed[i1:,j1:,k1:k2][f_mask[i1:,j1:,k1:k2]] = cof(bed[i1:,j1:,k1:k2][f_mask[i1:,j1:,k1:k2]], fibre[:N[0]-i1,:N[1]-j1,:].flatten())
+        bed[:i2,:j2,k1:k2][f_mask[:i2,:j2,k1:k2]] = cof(bed[:i2,:j2,k1:k2][f_mask[:i2,:j2,k1:k2]], fibre[N[0]-i1:,N[1]-j1:,:].flatten())
+        bed[i1:,:j2,k1:k2][f_mask[i1:,:j2,k1:k2]] = cof(bed[i1:,:j2,k1:k2][f_mask[i1:,:j2,k1:k2]], fibre[:N[0]-i1,N[1]-j1:,:].flatten())
+        bed[:i2,j1:,k1:k2][f_mask[:i2,j1:,k1:k2]] = cof(bed[:i2,j1:,k1:k2][f_mask[:i2,j1:,k1:k2]], fibre[N[0]-i1:,:N[1]-j1,:].flatten())
     
     elif i1>i2 and j1<j2 and k1>k2:
-        bed[i1:,j1:j2,k1:][f_mask[i1:,j1:j2,k1:]] += fibre[:N[0]-i1,:,:N[2]-k1].flatten()
-        bed[:i2,j1:j2,:k2][f_mask[:i2,j1:j2,:k2]] += fibre[N[0]-i1:,:,N[2]-k1:].flatten()
-        bed[i1:,j1:j2,:k2][f_mask[i1:,j1:j2,:k2]] += fibre[:N[0]-i1,:,N[2]-k1:].flatten()
-        bed[:i2,j1:j2,k1:][f_mask[:i2,j1:j2,k1:]] += fibre[N[0]-i1:,:,:N[2]-k1].flatten()
+        bed[i1:,j1:j2,k1:][f_mask[i1:,j1:j2,k1:]] = cof(bed[i1:,j1:j2,k1:][f_mask[i1:,j1:j2,k1:]], fibre[:N[0]-i1,:,:N[2]-k1].flatten())
+        bed[:i2,j1:j2,:k2][f_mask[:i2,j1:j2,:k2]] = cof(bed[:i2,j1:j2,:k2][f_mask[:i2,j1:j2,:k2]], fibre[N[0]-i1:,:,N[2]-k1:].flatten())
+        bed[i1:,j1:j2,:k2][f_mask[i1:,j1:j2,:k2]] = cof(bed[i1:,j1:j2,:k2][f_mask[i1:,j1:j2,:k2]], fibre[:N[0]-i1,:,N[2]-k1:].flatten())
+        bed[:i2,j1:j2,k1:][f_mask[:i2,j1:j2,k1:]] = cof(bed[:i2,j1:j2,k1:][f_mask[:i2,j1:j2,k1:]], fibre[N[0]-i1:,:,:N[2]-k1].flatten())
     
     elif i1<i2 and j1>j2 and k1>k2:
-        bed[i1:i2,j1:,k1:][f_mask[i1:i2,j1:,k1:]] += fibre[:,:N[1]-j1,:N[2]-k1].flatten()
-        bed[i1:i2,:j2,:k2][f_mask[i1:i2,:j2,:k2]] += fibre[:,N[1]-j1:,N[2]-k1:].flatten()
-        bed[i1:i2,:j2,k1:][f_mask[i1:i2,:j2,k1:]] += fibre[:,N[1]-j1:,:N[2]-k1].flatten()
-        bed[i1:i2,j1:,:k2][f_mask[i1:i2,j1:,:k2]] += fibre[:,:N[1]-j1,N[2]-k1:].flatten()
+        bed[i1:i2,j1:,k1:][f_mask[i1:i2,j1:,k1:]] = cof(bed[i1:i2,j1:,k1:][f_mask[i1:i2,j1:,k1:]], fibre[:,:N[1]-j1,:N[2]-k1].flatten())
+        bed[i1:i2,:j2,:k2][f_mask[i1:i2,:j2,:k2]] = cof(bed[i1:i2,:j2,:k2][f_mask[i1:i2,:j2,:k2]], fibre[:,N[1]-j1:,N[2]-k1:].flatten())
+        bed[i1:i2,:j2,k1:][f_mask[i1:i2,:j2,k1:]] = cof(bed[i1:i2,:j2,k1:][f_mask[i1:i2,:j2,k1:]], fibre[:,N[1]-j1:,:N[2]-k1].flatten())
+        bed[i1:i2,j1:,:k2][f_mask[i1:i2,j1:,:k2]] = cof(bed[i1:i2,j1:,:k2][f_mask[i1:i2,j1:,:k2]], fibre[:,:N[1]-j1,N[2]-k1:].flatten())
     
     elif i1>i2 and j1>j2 and k1>k2:
-        bed[i1:,j1:,k1:][f_mask[i1:,j1:,k1:]] += fibre[:N[0]-i1,:N[1]-j1,:N[2]-k1].flatten()
-        bed[:i2,:j2,:k2][f_mask[:i2,:j2,:k2]] += fibre[N[0]-i1:,N[1]-j1:,N[2]-k1:].flatten()
-        bed[i1:,:j2,:k2][f_mask[i1:,:j2,:k2]] += fibre[:N[0]-i1,N[1]-j1:,N[2]-k1:].flatten()
-        bed[:i2,j1:,k1:][f_mask[:i2,j1:,k1:]] += fibre[N[0]-i1:,:N[1]-j1,:N[2]-k1].flatten()
-        bed[i1:,j1:,:k2][f_mask[i1:,j1:,:k2]] += fibre[:N[0]-i1,:N[1]-j1,N[2]-k1:].flatten()
-        bed[:i2,:j2,k1:][f_mask[:i2,:j2,k1:]] += fibre[N[0]-i1:,N[1]-j1:,:N[2]-k1].flatten()
-        bed[i1:,:j2,k1:][f_mask[i1:,:j2,k1:]] += fibre[:N[0]-i1,N[1]-j1:,:N[2]-k1].flatten()
-        bed[:i2,j1:,:k2][f_mask[:i2,j1:,:k2]] += fibre[N[0]-i1:,:N[1]-j1,N[2]-k1:].flatten()
+        bed[i1:,j1:,k1:][f_mask[i1:,j1:,k1:]] = cof(bed[i1:,j1:,k1:][f_mask[i1:,j1:,k1:]], fibre[:N[0]-i1,:N[1]-j1,:N[2]-k1].flatten())
+        bed[:i2,:j2,:k2][f_mask[:i2,:j2,:k2]] = cof(bed[:i2,:j2,:k2][f_mask[:i2,:j2,:k2]], fibre[N[0]-i1:,N[1]-j1:,N[2]-k1:].flatten())
+        bed[i1:,:j2,:k2][f_mask[i1:,:j2,:k2]] = cof(bed[i1:,:j2,:k2][f_mask[i1:,:j2,:k2]], fibre[:N[0]-i1,N[1]-j1:,N[2]-k1:].flatten())
+        bed[:i2,j1:,k1:][f_mask[:i2,j1:,k1:]] = cof(bed[:i2,j1:,k1:][f_mask[:i2,j1:,k1:]], fibre[N[0]-i1:,:N[1]-j1,:N[2]-k1].flatten())
+        bed[i1:,j1:,:k2][f_mask[i1:,j1:,:k2]] = cof(bed[i1:,j1:,:k2][f_mask[i1:,j1:,:k2]], fibre[:N[0]-i1,:N[1]-j1,N[2]-k1:].flatten())
+        bed[:i2,:j2,k1:][f_mask[:i2,:j2,k1:]] = cof(bed[:i2,:j2,k1:][f_mask[:i2,:j2,k1:]], fibre[N[0]-i1:,N[1]-j1:,:N[2]-k1].flatten())
+        bed[i1:,:j2,k1:][f_mask[i1:,:j2,k1:]] = cof(bed[i1:,:j2,k1:][f_mask[i1:,:j2,k1:]], fibre[:N[0]-i1,N[1]-j1:,:N[2]-k1].flatten())
+        bed[:i2,j1:,:k2][f_mask[:i2,j1:,:k2]] = cof(bed[:i2,j1:,:k2][f_mask[:i2,j1:,:k2]], fibre[N[0]-i1:,:N[1]-j1,N[2]-k1:].flatten())
 
-    # randomly assign 1 or 2 to the overlapping voxels [should be improved]
-    bed[bed>2] = np.random.choice([1,2])
     return bed
 
 def bend_fibre(fibre, bending_factor, flip=False):
@@ -1551,6 +1568,10 @@ def bend_fibre(fibre, bending_factor, flip=False):
 def add_roughness(domain_smooth, d_rough, labels=[1,2]):
     from scipy.ndimage.morphology import binary_dilation
 
+    if d_rough==0:
+        Warning('d_rough is 0, no roughness added')
+        return domain_smooth
+    
     prob = 1/(d_rough*1.5)      # probability of initial roughness points
     R = d_rough//2            # radius of roughness points
 
@@ -1662,3 +1683,20 @@ def create_circle(diameter, output='total'):
     elif output == 'quarter':
         return circle[N//2:,:N//2]
     
+def correct_overlapping_fibres(location_in_bed, new_fibre):
+    location_in_bed += new_fibre
+    location_in_bed[location_in_bed==4] = 2
+    location_in_bed[location_in_bed==3] = new_fibre[location_in_bed==3]
+    location_in_bed[np.logical_and(location_in_bed==2, new_fibre!=0)] = new_fibre[np.logical_and(location_in_bed==2, new_fibre!=0)]
+
+    return location_in_bed
+
+def create_vertices_in_uniform_grid(N):
+    x = np.arange(N[0]+1)
+    y = np.arange(N[1]+1)
+    z = np.arange(N[2]+1)
+
+    X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
+
+    vertices = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
+    return vertices
