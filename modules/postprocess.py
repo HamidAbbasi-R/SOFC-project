@@ -325,7 +325,10 @@ def visualize_mesh(
         TPB_mesh=[], 
         log_scale=None, 
         animation='none',
-        save_graphics=None,):
+        save_graphics=None,
+        elevation=0,
+        azimuth=0,
+        link_views=True):
     """
     Visualizes the mesh via PyVista.
     inputs:
@@ -337,7 +340,11 @@ def visualize_mesh(
     
     pv.set_plot_theme("document")
     cmap = plt.cm.get_cmap("viridis")
-
+    
+    zmin = min([np.nanmin(m) for m in mat])
+    zmax = max([np.nanmax(m) for m in mat])
+    clim = None
+    
     subplts = len(mat)
     
     if bool(blocks): 
@@ -365,30 +372,31 @@ def visualize_mesh(
         p.subplot(0, i)
         # mesh.save(f"mesh{i}.vtk")
         if clip_widget:
-            p.add_mesh_clip_plane(mesh, scalar_bar_args={'title': f'Phase{i+1}'}, cmap=cmap)
+            p.add_mesh_clip_plane(mesh, scalar_bar_args={'title': f'Phase{i+1}'}, cmap=cmap, clim=clim)
         else:
-            p.add_mesh(mesh, scalar_bar_args=sargs, log_scale=scale, cmap=cmap)#, show_edges=True)
+            p.add_mesh(mesh, scalar_bar_args=sargs, log_scale=scale, cmap=cmap, clim=clim)#, show_edges=True)
             p.add_bounding_box(line_width=1, color='black')
             if bool(titles):
                 p.add_text(titles[i], font_size=20, position='lower_edge')
         if bool(TPB_mesh):
-            p.add_mesh(TPB_mesh, line_width=5, color='r')
-                # for j in range(len(TPB_mesh)):
-                    # p.add_mesh(TPB_mesh[j], line_width=3, color='k')
-        # p.add_axes(line_width=5, labels_off=True)
+            p.add_mesh(TPB_mesh[i], line_width=10, color='r')
+        
+        p.view_isometric()
+        p.camera_position = 'xy'
+        # p.camera.clipping_range = (1e-2, 1e3)
+        p.camera.elevation = elevation
+        p.camera.azimuth = azimuth
+        # p.show_grid()
+        # p.remove_scalar_bar()
+        # p.enable_parallel_projection()
 
 
     if bool(blocks):
         p.subplot(0, subplts)
         p.add_mesh(blocks)
         
-    p.link_views()
-    p.view_isometric()
-    # p.remove_scalar_bar()
-    p.camera_position = 'xy'
-    # p.show_grid()
-    # p.enable_parallel_projection()
-
+    if link_views:
+        p.link_views()
 
     if animation != 'none':
         p.open_movie("Binary files/animation.mp4")
@@ -419,13 +427,12 @@ def visualize_mesh(
                 p.write_frame()
             p.close()
     elif animation == 'none':
-        p.camera.clipping_range = (1e-2, 1e3)
-        p.camera.elevation = 30.1
-        p.camera.azimuth = 60.1
-        if save_graphics=='pdf':
-            p.save_graphic("img.pdf")
-        elif save_graphics=='html':
-            p.export_html("img.html")
+        if save_graphics is not None:
+            file_name = 'img.' + save_graphics
+            if save_graphics=='pdf' or save_graphics=='svg':
+                p.save_graphic(file_name, raster=False, painter=False)
+            elif save_graphics=='html':
+                p.export_html("img.html")
         # pv.set_jupyter_backend('trame')
         p.show()
     return None
@@ -587,7 +594,6 @@ def create_dense_matrices(inputs, phi, masks_dict, indices, field_functions, TPB
                  Ia=Ia_mat, 
                  eta_act=eta_act_mat, 
                  eta_con=eta_conc_mat,
-                 vertices=TPB_dict['vertices'],
                  lines=TPB_dict['lines'])
 
     dense_m = {

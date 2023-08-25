@@ -3,5 +3,7 @@
 **/Binary files
 input files/
 input files [old]/
-# input files
-# input files [old]
+.vscode/launch.json
+test.py
+plot_graphs.ipynb
+microstructure overpotential.xlsx

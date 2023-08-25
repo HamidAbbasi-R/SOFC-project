@@ -157,7 +157,7 @@ def create_microstructure_plurigaussian(
     if display==True and dim==2:
         import plotly.express as px
         fig = px.imshow(np.rot90(phase_mat))
-        # fig.write_image("fig1.pdf")
+        fig.write_image("fig1.pdf")
         fig.show()
     elif display==True and dim==3:
         # from postprocess import visualize_mesh
@@ -643,10 +643,8 @@ def remove_edges(phi):
     
 def create_microstructure(inputs, display=False):
     print("Generating microstructure...", end='')
-    flag_lattice = inputs['microstructure']['lattice_geometry']['flag']
-    flag_plurigaussian = inputs['microstructure']['plurigaussian']['flag']
+
     flag_reduced = inputs['microstructure']['plurigaussian']['reduced_geometry']['flag']
-    flag_fibrous = inputs['microstructure']['fibrous_bed']['flag']
 
     dx = inputs['microstructure']['dx']
     scale_factor = inputs['microstructure']['scale_factor']
@@ -666,17 +664,18 @@ def create_microstructure(inputs, display=False):
     infiltration_loading = inputs['microstructure']['infiltration_loading']
 
     # create the entire domain
-    if flag_lattice:
+    if inputs['microstructure']['type']=='lattice':
         flag_smallest_lattice = inputs['microstructure']['lattice_geometry']['smallest_lattice']
-        domain = create_microstructure_lattice(
+        domain, TPB_density_analytical = create_microstructure_lattice(
             vol_frac, 
             dx, 
             voxels, 
             d_ave,
             offset=True,
             smallest_lattice=flag_smallest_lattice)
+        print(f'analytical TPB density= {TPB_density_analytical:.2f}')
     
-    elif flag_plurigaussian:
+    elif inputs['microstructure']['type']=='plurigaussian':
         seed = inputs['microstructure']['plurigaussian']['seed']
         gradient_factor = inputs['microstructure']['plurigaussian']['gradient_factor']
         
@@ -698,7 +697,7 @@ def create_microstructure(inputs, display=False):
         if flag_reduced:
             domain = domain[:voxels[0],:,:]
     
-    elif flag_fibrous:
+    elif inputs['microstructure']['type']=='fibrous':
         fibre_length = int(inputs['microstructure']['fibrous_bed']['fibre_length']/dx)
         radius = int(d_ave/2/dx)
         freq = inputs['microstructure']['fibrous_bed']['frequency']
@@ -717,6 +716,10 @@ def create_microstructure(inputs, display=False):
             bend_max = bend_max)
 
     domain = infiltration(domain, infiltration_loading)
+
+    if inputs['microstructure']['roughness_flag']:
+        d_rough_pixel = int(np.round(inputs['microstructure']['d_roughness'] / dx))
+        domain = add_roughness_all_phases(domain, iteration=inputs['microstructure']['roughness_iters'], d_rough=d_rough_pixel)
 
     domain = downscale_domain(domain,scale_factor)
     inputs['microstructure']['dx'] = dx*scale_factor
@@ -772,7 +775,7 @@ def topological_operations(inputs, domain_old, show_TPB=False, show_TPB_variatio
         import pyvista as pv
         TPB_mesh = pv.PolyData(create_vertices_in_uniform_grid(domain.shape), lines=lines)
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(2,3)], TPB_mesh=TPB_mesh, animation='none')
+        vm([domain], [(2,3)], TPB_mesh=[TPB_mesh], animation='none', clip_widget=False)
 
     # plot the variation of TPB density along the X direction
     if show_TPB_variations:
@@ -786,19 +789,19 @@ def topological_operations(inputs, domain_old, show_TPB=False, show_TPB_variatio
             )
         fig.show()
 
-    if inputs['solver_options']['image_analysis_only']:
-        np.savez(
-            f'Binary files/image analysis/domain_{inputs["file_options"]["id"]}.npz',
-            domain=domain,
-            TPB_mask=TPB_mask,
-            lines=lines,
-            )
-        np.savez(
-            f'Binary files/image analysis/scalars_{inputs["file_options"]["id"]}.npz',
-            TPB_density=TPB_density,
-            percolation_percentage=percolation_percentage,
-            TPB_dist_x=TPB_dist_x,
-            )
+    # if inputs['solver_options']['image_analysis_only']:
+    #     np.savez(
+    #         f'Binary files/image analysis/domain_{inputs["file_options"]["id"]}.npz',
+    #         domain=domain,
+    #         TPB_mask=TPB_mask,
+    #         lines=lines,
+    #         )
+    #     np.savez(
+    #         f'Binary files/image analysis/scalars_{inputs["file_options"]["id"]}.npz',
+    #         TPB_density=TPB_density,
+    #         percolation_percentage=percolation_percentage,
+    #         TPB_dist_x=TPB_dist_x,
+    #         )
 
     # print percolation percentage and TPB density with three significant digits
     print(f'TPB density: \n{TPB_density/1e12:.3f}')
@@ -1067,11 +1070,15 @@ def infiltration(domain, loading):
 
     return domain
 
-def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True, smallest_lattice=True):
+def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True, smallest_lattice=True, gradient=1):
     from scipy.optimize import fsolve
 
     N = voxels
 
+    def find_vf(f0):
+        f = 4/3*np.pi*(1 - 9/2*f0**2 + 3/2*f0**3)/8/(1-f0)**3 - vf_particle
+        return f
+    
     if sum(vol_frac) - 1 > 1e-2:
         raise ValueError('Sum of volume fractions must be equal to 1!')
 
@@ -1083,10 +1090,6 @@ def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True,
     if vf_particle < np.pi/6 or vf_particle > 0.965:
         raise ValueError('For ordered lattice microstructures, particle volume fraction (Ni+YSZ) should be between 0.5236 and 0.965!')
     
-    def find_vf(f0):
-        f = 4/3*np.pi*(1 - 9/2*f0**2 + 3/2*f0**3)/8/(1-f0)**3 - vf_particle
-        return f
-
     f0 = fsolve(find_vf, 0.1)
 
     r = d_particle / 2
@@ -1125,9 +1128,9 @@ def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True,
     phase_mat += 1      # pore=1, Ni=2, YSZ=3
 
     # analytical TPB density
-    TPB_density = 1/2 * np.pi * np.sqrt(2*f0 - f0**2) / (1-f0)**3 * r / r**3 # [m/m3]
-    TPB_density /= 1e12 # [µm/µm3]
-    return phase_mat
+    TPB_density_analytical = 1/2 * np.pi * np.sqrt(2*f0 - f0**2) / (1-f0)**3 * r / r**3 # [m/m3]
+    TPB_density_analytical /= 1e12 # [µm/µm3]
+    return phase_mat, TPB_density_analytical[0]
 
 def compare_circle_circumference(lower_bound, upper_bound):
     import plotly.graph_objects as go
@@ -1231,7 +1234,7 @@ def PDF_analysis(scale, probability_value):
     return root
 
 def downscale_domain(domain, scale=2):
-    # scale can only be 2, 4, 8, 16, ...
+    # scale can only be 1, 2, 4, 8, 16, ...
     if scale == 1:
         return domain
 
@@ -1622,7 +1625,6 @@ def add_roughness(domain_smooth, d_rough, labels=[1,2]):
 
 def add_roughness_all_phases(domain_smooth, labels=None, iteration=1, d_rough=6):
     if labels is None:
-
         labels = [[1,2],[1,3],[2,3]] if len(np.unique(domain_smooth))==3 else [[1,2]]
     else:
         labels = [labels]
