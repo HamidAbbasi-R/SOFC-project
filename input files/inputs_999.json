@@ -8,48 +8,47 @@
         "id": "999"
     },
     "microstructure": {
-        "dx": 20e-09,
-        "average_diameter": 0.25e-06,
+        "dx": 50E-9,
+        "average_diameter": 500E-9,
         "volume_fractions": {
-            "pores": 0.99,
-            "Ni": 0.005,
-            "YSZ": 0.005
+            "pores": 0.4,
+            "Ni":    0.3,
+            "YSZ":   0.3
         },
         "length": {
-            "X": 4e-06,
-            "Y": 1e-06,
-            "Z": 1e-06
+            "X": 50E-6,
+            "Y": 10E-6,
+            "Z": 10E-6
         },
-        "fibrous_bed": {
-            "flag": true,
-            "length": 35e-06,
-            "amplitude": 1,
-            "frequency": 1,
-            "overlap": 1.2,
-            "rotation_max": [0,0,0]
-        },
-        "lattice_geometry": {
-            "flag": false
-        },
+        "type": "lattice",
         "plurigaussian": {
-            "flag": false,
             "gradient_factor": 1,
-            "seed": [
-                70,
-                40
-            ],
+            "seed": [12,73],
             "reduced_geometry": {
                 "flag": false,
-                "Lx_extended": 1e-05
+                "Lx_extended": 1E-5
             }
         },
-        "infiltration_loading": 0.0,
+        "fibrous_bed": {
+            "fibre_length": 9e-06,
+            "frequency": 8,
+            "overlap": 1.2,
+            "rotation_max": [0,0,90],
+            "bend_max": 1.2
+        },
+        "lattice_geometry": {
+            "smallest_lattice": true
+        },
+        "roughness_flag": false,
+        "roughness_iters": 3,
+        "d_roughness": 30E-9,
+        "infiltration_loading": 0,
         "scale_factor": 1
     },
     "boundary_conditions": {
         "pH2_inlet": 0.95,
         "pH2_b": 0.95,
-        "Vel_b": 0.01,
+        "Vel_b": 0.5,
         "Vio_b": 0
     },
     "operating_conditions": {
@@ -57,10 +56,11 @@
         "P": 1
     },
     "solver_options": {
+        "image_analysis_only": false,
         "ion_only": true,
-        "max_iter_non": 2,
+        "max_iter_non": 300,
         "max_iter_lin": 20,
-        "tol": 5e-05,
+        "tol": 5E-5,
         "uf": {
             "cH2": 0.9,
             "Vel": 0.9,

@@ -5,42 +5,57 @@
         "load_case_data": false,
         "save_case": false,
         "save_data": false,
-        "id": "12"
+        "id": "012"
     },
     "microstructure": {
-        "dx": 1e-07,
+        "dx": 5e-08,
         "average_diameter": 5e-07,
         "volume_fractions": {
-            "pores": 0.44,
-            "Ni": 0.28,
-            "YSZ": 0.28
+            "pores": 0.4,
+            "Ni": 0.3,
+            "YSZ": 0.3
         },
         "length": {
-            "X": 3e-05,
-            "Y": 1e-05,
-            "Z": 1e-05
+            "X": 2e-05,
+            "Y": 7.5e-06,
+            "Z": 7.5e-06
         },
-        "lattice_geometry": {
-            "flag": false
-        },
+        "type": "lattice",
         "plurigaussian": {
-            "flag": true,
             "gradient_factor": 1,
             "seed": [
-                70,
-                40
+                12,
+                73
             ],
             "reduced_geometry": {
                 "flag": false,
                 "Lx_extended": 1e-05
             }
         },
-        "infiltration_loading": 0
+        "fibrous_bed": {
+            "fibre_length": 7e-06,
+            "frequency": 7,
+            "overlap": 1.2,
+            "rotation_max": [
+                0,
+                0,
+                90
+            ],
+            "bend_max": 1.2
+        },
+        "lattice_geometry": {
+            "smallest_lattice": true
+        },
+        "roughness_flag": false,
+        "roughness_iters": 3,
+        "d_roughness": 3e-08,
+        "infiltration_loading": 0,
+        "scale_factor": 1
     },
     "boundary_conditions": {
-        "pH2_inlet": 0.5,
-        "pH2_b": 0.5,
-        "Vel_b": 0.2,
+        "pH2_inlet": 0.95,
+        "pH2_b": 0.95,
+        "Vel_b": 0.01,
         "Vio_b": 0
     },
     "operating_conditions": {
@@ -48,6 +63,7 @@
         "P": 1
     },
     "solver_options": {
+        "image_analysis_only": false,
         "ion_only": true,
         "max_iter_non": 300,
         "max_iter_lin": 20,
@@ -62,6 +78,7 @@
         "show_residuals": false,
         "show_3D_plots": false,
         "show_1D_plots": false,
+        "write_arrays": true,
         "csv_output": true,
         "img_output": false
     },
