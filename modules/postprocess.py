@@ -318,17 +318,21 @@ def save_image(phase_mat):
 
 def visualize_mesh(
         mat, 
-        thd=[()], 
+        thd=None, 
         blocks=[], 
         titles=[], 
         clip_widget=False, 
         TPB_mesh=[], 
         log_scale=None, 
-        animation='none',
-        save_graphics=None,
+        animation=None,
+        save_graphics=False,
         elevation=0,
         azimuth=0,
-        link_views=True):
+        isometric=False,
+        link_views=False,
+        cmap='viridis',
+        save_vtk=False,
+        ):
     """
     Visualizes the mesh via PyVista.
     inputs:
@@ -339,36 +343,58 @@ def visualize_mesh(
     import matplotlib.pyplot as plt
     
     pv.set_plot_theme("document")
-    cmap = plt.cm.get_cmap("viridis")
-    
+    cmap = plt.cm.get_cmap(cmap)
+     
+    if thd is None: thd = [()]*len(mat)
+
     zmin = min([np.nanmin(m) for m in mat])
     zmax = max([np.nanmax(m) for m in mat])
-    clim = None
+    clim = [zmin, zmax]
     
     subplts = len(mat)
     
     if bool(blocks): 
-        p = pv.Plotter(shape=(1, subplts+1), border=True, notebook=False)
+        p = pv.Plotter(
+            shape=(1, subplts+1), 
+            border=True, 
+            notebook=False,
+            )
     else:
-        p = pv.Plotter(shape=(1, subplts), border=True, notebook=False)
+        p = pv.Plotter(
+            shape=(1, subplts), 
+            border=True, 
+            notebook=False, 
+            off_screen=True if save_graphics else False,
+            )
     
     for i in np.arange(subplts):
         scale = log_scale[i] if log_scale is not None else False
-        sargs = dict(title=f'P{i+1}', height=0.15, vertical=True, position_x=0.01, position_y=0.8)
+        sargs = dict(
+            title=f'P{i+1}', 
+            height=0.15, 
+            vertical=True, 
+            position_x=0.01, 
+            position_y=0.8,
+            )
         sub_mat = mat[i]
         N=sub_mat.shape
         # Initializing grids
         mesh = pv.ImageData(dimensions=(N[0]+1,N[1]+1,N[2]+1))
         
-        # Assigning values to grids
-        mesh.cell_data["data"] = sub_mat.T.flatten()
+        # Assigning values to grids and thresholding
+        if type(sub_mat[0,0,0]) is np.bool_:
+            sub_mat = sub_mat.astype(int) 
+            mesh.cell_data["data"] = sub_mat.T.flatten()
+            mesh = mesh.threshold((1,1))
+        else:
+            mesh.cell_data["data"] = sub_mat.T.flatten()
+            sub_thd = thd[i]
+            if save_vtk: mesh.save('mesh.vtk')
+            if len(sub_thd)==0:
+                mesh = mesh.threshold()
+            if len(sub_thd)>0:
+                mesh = mesh.threshold(sub_thd)
         
-        sub_thd = thd[i]
-        if len(sub_thd)==0:
-            mesh = mesh.threshold()
-        if len(sub_thd)>0:
-            mesh = mesh.threshold(sub_thd)
-            
         p.subplot(0, i)
         # mesh.save(f"mesh{i}.vtk")
         if clip_widget:
@@ -379,13 +405,15 @@ def visualize_mesh(
             if bool(titles):
                 p.add_text(titles[i], font_size=20, position='lower_edge')
         if bool(TPB_mesh):
+            if save_vtk: TPB_mesh[i].save(f'TPB_mesh{i}.vtk')
             p.add_mesh(TPB_mesh[i], line_width=10, color='r')
         
-        p.view_isometric()
-        p.camera_position = 'xy'
-        # p.camera.clipping_range = (1e-2, 1e3)
-        p.camera.elevation = elevation
-        p.camera.azimuth = azimuth
+        if isometric: p.view_isometric()
+        else: 
+            p.camera_position = 'xy'
+            # p.camera.clipping_range = (1e-2, 1e3)
+            p.camera.elevation = elevation
+            p.camera.azimuth = azimuth
         # p.show_grid()
         # p.remove_scalar_bar()
         # p.enable_parallel_projection()
@@ -395,10 +423,9 @@ def visualize_mesh(
         p.subplot(0, subplts)
         p.add_mesh(blocks)
         
-    if link_views:
-        p.link_views()
+    if link_views: p.link_views()
 
-    if animation != 'none':
+    if animation is not None:
         p.open_movie("Binary files/animation.mp4")
         p.camera_position = 'xz'
         if animation == 'zoom':
@@ -426,15 +453,21 @@ def visualize_mesh(
                 p.camera.azimuth = value * 360
                 p.write_frame()
             p.close()
-    elif animation == 'none':
-        if save_graphics is not None:
-            file_name = 'img.' + save_graphics
-            if save_graphics=='pdf' or save_graphics=='svg':
-                p.save_graphic(file_name, raster=False, painter=False)
-            elif save_graphics=='html':
-                p.export_html("img.html")
-        # pv.set_jupyter_backend('trame')
-        p.show()
+    elif animation is None:
+        if save_graphics:
+            scale_factor = 2
+            p.window_size = [scale_factor*p.window_size[0],scale_factor*p.window_size[1]]
+            p.show()
+            p.update()
+            p.screenshot('screenshot.png')
+            # file_name = 'img.' + save_graphics
+            # if save_graphics=='pdf' or save_graphics=='svg':
+            #     p.save_graphic(file_name, raster=False, painter=False)
+            # elif save_graphics=='html':
+            #     p.export_html("img.html")
+        else:
+            p.show()
+
     return None
     
 def visualize_network(volumes, centroids, M=1):
@@ -609,7 +642,6 @@ def create_dense_matrices(inputs, phi, masks_dict, indices, field_functions, TPB
 
 def create_csv_output(x, y_avg, y_min=None, y_max=None, y_c_down=None, y_c_up=None, title='y'):
     import pandas as pd
-    import os
 
     avg_title = title + '_avg'
     min_title = title + '_min'
@@ -633,48 +665,87 @@ def create_directory(dir):
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-def plot_domain(domains, gap=0, qualitative=True, save=False):
+def plot_domain(
+        domains, 
+        gap=0, 
+        qualitative=True, 
+        file_name=None, 
+        renderer='browser', 
+        template='plotly',
+        link_views=True,
+        colormap='plasma',
+        show_figure=True,
+        not_pores=False):
+    
     import plotly.graph_objects as go
     import plotly.express as px
     from plotly.subplots import make_subplots
     import plotly.io as pio
-    pio.renderers.default = "browser"
+    pio.renderers.default = renderer
 
     # number of domains
     N = len(domains)
 
+    for n in range(N):
+        domains[n] = np.rot90(domains[n]).astype(float)
+        if not_pores:
+            domains[n][domains[n]==1] = np.nan
     # range of colorscale
-    zmin = min([np.nanmin(d) for d in domains]).astype(int)
-    zmax = max([np.nanmax(d) for d in domains]).astype(int)
+    zmin = np.nanmin([np.nanmin(d) for d in domains]).astype(int)
+    zmax = np.nanmax([np.nanmax(d) for d in domains]).astype(int)
 
     # choose a qualitiative colormap from zmin to zmax
     if qualitative:
-        if zmin == zmax:
-            colorscale = px.colors.qualitative.G10
-        else:
-            colorscale = [px.colors.qualitative.G10[i] for i in np.arange(zmax-zmin+1)]
+        pass
+        # if zmin == zmax:
+        #     colorscale = px.colors.qualitative.Bold
+        # else:
+        #     colorscale = [px.colors.qualitative.Bold[i] for i in np.arange(zmax-zmin+1)]
     else:
-        colorscale = 'Viridis'
+        pass
+        # colorscale = 'Viridis'
+    colorscale = colormap
         
     # create figure
-    fig = make_subplots(rows=1, cols=N, )
-    for n in range(N):
-        fig.append_trace(go.Heatmap(z=domains[n], xgap=gap, ygap=gap, zmin=zmin, zmax=zmax, colorscale=colorscale, showscale=False), row=1, col=n+1)
-        # scaleanchor = "x" if shared_axis else f"x{n+1}"
-        fig.update_yaxes(
-            scaleanchor=f"x{n+1}",
-            scaleratio=1,
-            row=1, col=n+1
-            )
-        # scaleanchor = "y" if shared_axis else f"y{n+1}"
-        # fig.update_xaxes(
-        #     scaleanchor=scaleanchor,
-        #     scaleratio=1,
-        #     row=1, col=n+1
-        #     )
+    fig = make_subplots(
+        rows=1, 
+        cols=N, 
+        shared_yaxes=link_views)
     
-    fig.show()
-    if save:
-        fig.write_image("fig1.svg")
+    for n in range(N):
+        fig.append_trace(
+            go.Heatmap(
+                z=domains[n], 
+                xgap=gap, 
+                ygap=gap, 
+                zmin=zmin, 
+                zmax=zmax, 
+                colorscale=colorscale, 
+                showscale=False
+                ), 
+            row=1, 
+            col=n+1)
+        
+        # make every pixel in every figure square
+        scaleanchor = "x" if N==1 else f"x{n+1}"
+        fig.update_yaxes(
+            scaleanchor=scaleanchor,
+            scaleratio=1,
+            row=1, 
+            col=n+1,)
+
+        # update matches for each axis (x2, x3, ... match x1)
+        if link_views:
+            fig.update_xaxes(
+                scaleanchor='x' if N==1 else 'x1',
+                scaleratio=1,
+                matches='x1',
+                row=1, 
+                col=n+1)
+        
+    fig.update_layout(template=template)
+
+    if show_figure: fig.show()
+    if file_name is not None: fig.write_image(file_name+'.svg')
 
     
