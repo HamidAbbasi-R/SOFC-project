@@ -6,7 +6,7 @@ def create_microstructure_plurigaussian(
         dx,
         mode = "normal", 
         seed = [], 
-        gradient_factor = 1,
+        gradient_factor = 0,
         periodic = True, 
         display = False, 
         histogram = 'none'):
@@ -107,8 +107,8 @@ def create_microstructure_plurigaussian(
                 # a uniform distribution, but volume fraction of Ni and YSZ changes
                 vf_p = vol_frac[0]
                 vf_Ni_nom = vol_frac[1]
-                vf_Ni_min = vf_Ni_nom / gradient_factor
-                vf_Ni_max = vf_Ni_nom + vf_Ni_nom / gradient_factor * (gradient_factor - 1)
+                vf_Ni_min = vf_Ni_nom * (1 - gradient_factor)
+                vf_Ni_max = vf_Ni_nom * (1 + gradient_factor)
                 vf_Ni = np.linspace(vf_Ni_min, vf_Ni_max, voxels[0])
                 for i in range(voxels[0]):
                     a = np.quantile(smooth_mat_1[i,:,:].flatten(), q=vf_p)
@@ -117,8 +117,8 @@ def create_microstructure_plurigaussian(
                     phase_mat[i,:,:][np.logical_and(smooth_mat_2[i,:,:] < b, smooth_mat_1[i,:,:] > a)] = 2
             if len(vol_frac)==1:    # phases: 1-2
                 phase_mat = np.zeros_like(smooth_mat_1, dtype=int)+2
-                vf_min = vol_frac[0] / gradient_factor
-                vf_max = vol_frac[0] + vol_frac[0] / gradient_factor * (gradient_factor - 1)
+                vf_min = vol_frac[0] * (1 - gradient_factor)
+                vf_max = vol_frac[0] * (1 + gradient_factor)
                 vf = np.linspace(vf_min, vf_max, voxels[0])
                 for i in range(voxels[0]):
                     a = np.quantile(smooth_mat_1[i,:,:].flatten(), q=vf[i])
@@ -130,8 +130,8 @@ def create_microstructure_plurigaussian(
                 # a uniform distribution, but volume fraction of Ni and YSZ changes
                 vf_p = vol_frac[0]
                 vf_Ni_nom = vol_frac[1]
-                vf_Ni_min = vf_Ni_nom / gradient_factor
-                vf_Ni_max = vf_Ni_nom + vf_Ni_nom / gradient_factor * (gradient_factor - 1)
+                vf_Ni_min = vf_Ni_nom * (1 - gradient_factor)
+                vf_Ni_max = vf_Ni_nom * (1 + gradient_factor)
                 vf_Ni = np.linspace(vf_Ni_min, vf_Ni_max, voxels[0])
                 for i in range(voxels[0]):
                     a = np.quantile(smooth_mat_1[i,:].flatten(), q=vf_p)
@@ -140,8 +140,8 @@ def create_microstructure_plurigaussian(
                     phase_mat[i,:][np.logical_and(smooth_mat_2[i,:] < b, smooth_mat_1[i,:] > a)] = 2
             if len(vol_frac)==1: # phases 1-2
                 phase_mat = np.zeros_like(smooth_mat_1, dtype=int)+2
-                vf_min = vol_frac[0] / gradient_factor
-                vf_max = vol_frac[0] + vol_frac[0] / gradient_factor * (gradient_factor - 1)
+                vf_min = vol_frac[0] * (1 - gradient_factor)
+                vf_max = vol_frac[0] * (1 + gradient_factor)
                 vf = np.linspace(vf_min, vf_max, voxels[0])
                 for i in range(voxels[0]):
                     a = np.quantile(smooth_mat_1[i,:].flatten(), q=vf[i])
@@ -162,7 +162,7 @@ def create_microstructure_plurigaussian(
     elif display==True and dim==3:
         # from postprocess import visualize_mesh
         from modules.postprocess import visualize_mesh as vm 
-        vm([phase_mat],[(2,3)])
+        vm([phase_mat],[(2,3)], save_vtk=True)
 
     # display the histogram of the smooth matrices
     if histogram=='1D':
@@ -560,7 +560,7 @@ def shuffle_labels(labeled_mat):
     shuffled_mat[shuffled_mat==0] = np.nan
     return shuffled_mat
 
-def image_segmentation(phase_mat,sigma=5,display=False):
+def image_segmentation(phase_mat, dx, sigma=5 ,display=False):
     """ 
     Segmentation of the phase matrix.
     Inputs:
@@ -598,11 +598,16 @@ def image_segmentation(phase_mat,sigma=5,display=False):
         labels[:,:,:,1], volumes[1], centroids[1], dist_mat[:,:,:,1] = results_2.result()
         labels[:,:,:,2], volumes[2], centroids[2], dist_mat[:,:,:,2] = results_3.result()
     
+    volumes[0] = volumes[0] * dx**3 * 1e18      # [μm^3]
+    volumes[1] = volumes[1] * dx**3 * 1e18      # [μm^3]
+    volumes[2] = volumes[2] * dx**3 * 1e18      # [μm^3]
+
     if display:
         from modules.postprocess import visualize_mesh as vm
         vm([labels[:,:,:,0], labels[:,:,:,1], labels[:,:,:,2]], [(), (), ()])
 
-    return labels, dist_mat, volumes, centroids
+    labels_list = [labels[:,:,:,0], labels[:,:,:,1], labels[:,:,:,2]]
+    return labels_list, dist_mat, volumes, centroids
 
 def remove_thin_boundaries(phase_mat):
     """
@@ -647,7 +652,8 @@ def create_microstructure(inputs, display=False):
     flag_reduced = inputs['microstructure']['plurigaussian']['reduced_geometry']['flag']
 
     dx = inputs['microstructure']['dx']
-    scale_factor = inputs['microstructure']['scale_factor']
+    downscale_factor = inputs['microstructure']['downscale_factor']
+    upscale_factor = inputs['microstructure']['upscale_factor']
     
     d_ave = inputs['microstructure']['average_diameter']
     
@@ -665,14 +671,13 @@ def create_microstructure(inputs, display=False):
 
     # create the entire domain
     if inputs['microstructure']['type']=='lattice':
-        flag_smallest_lattice = inputs['microstructure']['lattice_geometry']['smallest_lattice']
         domain, TPB_density_analytical = create_microstructure_lattice(
             vol_frac, 
             dx, 
             voxels, 
             d_ave,
             offset=True,
-            smallest_lattice=flag_smallest_lattice)
+            smallest_lattice=inputs['microstructure']['lattice_geometry']['smallest_lattice'])
         print(f'analytical TPB density= {TPB_density_analytical:.2f}')
     
     elif inputs['microstructure']['type']=='plurigaussian':
@@ -692,28 +697,23 @@ def create_microstructure(inputs, display=False):
             dx = dx,
             seed = seed,
             gradient_factor = gradient_factor,
-            periodic = False)
+            periodic = True if inputs['solver_options']['image_segmentation'] else False,  # True for image segmentation - otherwise change it to False 
+            )
     
         if flag_reduced:
             domain = domain[:voxels[0],:,:]
     
     elif inputs['microstructure']['type']=='fibrous':
-        fibre_length = int(inputs['microstructure']['fibrous_bed']['fibre_length']/dx)
-        radius = int(d_ave/2/dx)
-        freq = inputs['microstructure']['fibrous_bed']['frequency']
-        overlap = inputs['microstructure']['fibrous_bed']['overlap']
-        rot_max = inputs['microstructure']['fibrous_bed']['rotation_max']
-        bend_max = inputs['microstructure']['fibrous_bed']['bend_max']
-        target_porosity = vol_frac[0]
         domain = create_fibrous_bed(
             voxels = voxels,
-            radius = radius, 
-            fibre_length = fibre_length, 
-            target_porosity = target_porosity,
-            freq = freq, 
-            overlap = overlap, 
-            rotation_max = rot_max,
-            bend_max = bend_max)
+            radius = int(d_ave/2/dx), 
+            fibre_length = int(inputs['microstructure']['fibrous_bed']['fibre_length']/dx), 
+            target_porosity = vol_frac[0],
+            freq = inputs['microstructure']['fibrous_bed']['frequency'], 
+            overlap = inputs['microstructure']['fibrous_bed']['overlap'], 
+            rotation_max = inputs['microstructure']['fibrous_bed']['rotation_max'],
+            bend_max = inputs['microstructure']['fibrous_bed']['bend_max'],
+            )
 
     domain = infiltration(domain, infiltration_loading)
 
@@ -721,21 +721,46 @@ def create_microstructure(inputs, display=False):
         d_rough_pixel = int(np.round(inputs['microstructure']['d_roughness'] / dx))
         domain = add_roughness_all_phases(domain, iteration=inputs['microstructure']['roughness_iters'], d_rough=d_rough_pixel)
 
-    domain = downscale_domain(domain,scale_factor)
-    inputs['microstructure']['dx'] = dx*scale_factor
+    domain_org = None
+    if downscale_factor!=1 and upscale_factor!=1:
+        raise ValueError('downscale_factor and upscale_factor cannot be both different than 1')
+    elif downscale_factor!=1 or upscale_factor!=1:
+        # domain_org is the original domain before downscaling or upscaling
+        if downscale_factor!=1:
+            if inputs['solver_options']['subgrid']: domain_org = domain
+            domain = downscale_domain(domain, downscale_factor)
+            dx_scaled = dx * downscale_factor
+
+        if upscale_factor!=1:
+            if inputs['solver_options']['subgrid']: domain_org = domain
+            domain = upscale_domain(domain, upscale_factor)
+            dx_scaled = dx / upscale_factor
+
+        if inputs['solver_options']['subgrid']:
+            inputs['microstructure']['dx_scaled'] = dx_scaled
+        else:
+            inputs['microstructure']['dx'] = dx_scaled
+
 
     if display:
         from modules.postprocess import visualize_mesh as vm
         vm([domain], [(2,3)])
 
     print('Done!')
-    return domain
+    return domain, domain_org
 
-def topological_operations(inputs, domain_old, show_TPB=False, show_TPB_variations=False):
+def topological_operations(inputs, domain_old_list, show_TPB=False, show_TPB_variations=False):
     """
     domain topological operations
     """
     print("Domain topological operations...", end='')
+
+    if inputs['solver_options']['subgrid']:
+        domain_old_scaled = domain_old_list[0]
+        domain_old = domain_old_list[1]
+    else: 
+        domain_old = domain_old_list[0]
+
     # removing thin boundaries
     # remove thin boundaries to avoid numerical error for the case of Neumann BCs.
     # don't remove thin boundaries for periodic boundary conditions. it will cause problems.
@@ -743,13 +768,20 @@ def topological_operations(inputs, domain_old, show_TPB=False, show_TPB_variatio
     # savemat('domain.mat', {'domain': domain})
     
     domain_old = remove_thin_boundaries(domain_old.astype(float))
+    if inputs['solver_options']['subgrid']: domain_old_scaled = remove_thin_boundaries(domain_old_scaled.astype(float))
     # extract the domain that should be solved. ds is short for Domain for Solver.
     # when periodic boundary condition is used, percolation analysis should not be done.
     domain, _, _ = percolation_analysis(domain_old)
+    if inputs['solver_options']['subgrid']: domain_scaled, _, _ = percolation_analysis(domain_old_scaled)
 
     percolation_percentage =[None] * 3
     for i in range(3):
         percolation_percentage[i] = np.sum(domain==i+1) / np.sum(domain_old==i+1)
+
+    if inputs['solver_options']['subgrid']:
+        percolation_percentage_scaled =[None] * 3
+        for i in range(3):
+            percolation_percentage_scaled[i] = np.sum(domain_scaled==i+1) / np.sum(domain_old_scaled==i+1)
     
     # measure covariance
     # cov = measure_covariance(domain, phase=1)
@@ -757,10 +789,33 @@ def topological_operations(inputs, domain_old, show_TPB=False, show_TPB_variatio
     # measure the triple phase boundary and create a mask for source term
     dx = inputs['microstructure']['dx']
     TPB_mask, TPB_density, lines, TPB_dist_x = measure_TPB(domain, dx)
+    if inputs['solver_options']['subgrid']: 
+        dx_scaled = inputs['microstructure']['dx_scaled']
+        TPB_mask_scaled, TPB_density_scaled, lines_scaled, TPB_dist_x_scaled = measure_TPB(domain_scaled, dx_scaled)
+
+    # create the subgrid transformation matrix
+    if inputs['solver_options']['subgrid']:
+        TPB_mask_scaled_subgrid = subgrid_transformation(TPB_mask, TPB_mask_scaled)
+
+    # measure the histogram of pore/particle diameter
+    if inputs['solver_options']['image_segmentation']:
+        print("Image segmentation...", end='')
+        sigma_seg = inputs['microstructure']['sigma_segmentation']
+        labels, _, volumes, _ = image_segmentation(
+            phase_mat=domain,
+            dx=dx,
+            sigma=sigma_seg,
+            display=False)
+        print(f'average YSZ diameter: {1000*2*np.mean((volumes[2] / np.pi * 3/4)**(1/3)):.2f} nm')
+        from modules.postprocess import visualize_mesh
+        visualize_mesh(
+            [labels[2]],
+            cmap='jet',
+            )
 
     # convert float to integer
-    domain = domain.astype(int)
-    lines = lines.astype(int)
+    # domain = domain.astype(int)
+    # lines = lines.astype(int)
     
     print("Done!")
 
@@ -775,7 +830,13 @@ def topological_operations(inputs, domain_old, show_TPB=False, show_TPB_variatio
         import pyvista as pv
         TPB_mesh = pv.PolyData(create_vertices_in_uniform_grid(domain.shape), lines=lines)
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(2,3)], TPB_mesh=[TPB_mesh], animation='none', clip_widget=False)
+        vm(
+            [domain], 
+            [(2,3)], 
+            TPB_mesh=[TPB_mesh],  
+            clip_widget=False,
+            save_vtk=True,
+            )
 
     # plot the variation of TPB density along the X direction
     if show_TPB_variations:
@@ -789,19 +850,22 @@ def topological_operations(inputs, domain_old, show_TPB=False, show_TPB_variatio
             )
         fig.show()
 
-    # if inputs['solver_options']['image_analysis_only']:
-    #     np.savez(
-    #         f'Binary files/image analysis/domain_{inputs["file_options"]["id"]}.npz',
-    #         domain=domain,
-    #         TPB_mask=TPB_mask,
-    #         lines=lines,
-    #         )
-    #     np.savez(
-    #         f'Binary files/image analysis/scalars_{inputs["file_options"]["id"]}.npz',
-    #         TPB_density=TPB_density,
-    #         percolation_percentage=percolation_percentage,
-    #         TPB_dist_x=TPB_dist_x,
-    #         )
+    if inputs['solver_options']['image_analysis_only']:
+        np.savez(
+            f'Binary files/image analysis/domain_{inputs["file_options"]["id"]}.npz',
+            domain=domain,
+            TPB_mask=TPB_mask,
+            lines=lines,
+            )
+        np.savez(
+            f'Binary files/image analysis/scalars_{inputs["file_options"]["id"]}.npz',
+            TPB_density=TPB_density,
+            percolation_percentage=percolation_percentage,
+            TPB_dist_x=TPB_dist_x,
+            volumes_0=volumes[0] if inputs['solver_options']['image_segmentation'] else None,
+            volumes_1=volumes[1] if inputs['solver_options']['image_segmentation'] else None,
+            volumes_2=volumes[2] if inputs['solver_options']['image_segmentation'] else None,
+            )
 
     # print percolation percentage and TPB density with three significant digits
     print(f'TPB density: \n{TPB_density/1e12:.3f}')
@@ -1011,11 +1075,11 @@ def single_random_walk(domain, start, directions, steps):
 
 def segment(phase_mat, sigma):
     from scipy import ndimage as ndi
-    from skimage.filters import gaussian
+    from scipy.ndimage import gaussian_filter as gaussian
     from skimage.segmentation import watershed
 
     dist_mat = ndi.distance_transform_edt(phase_mat.astype(int))
-    dist_mat = gaussian(dist_mat, sigma=sigma, mode='nearest')
+    dist_mat = gaussian(dist_mat, sigma=sigma, mode='reflect') if sigma!=0 else dist_mat
     dist_mat[~phase_mat] = 0
     
     labels = watershed(-dist_mat, mask=phase_mat)
@@ -1070,7 +1134,15 @@ def infiltration(domain, loading):
 
     return domain
 
-def create_microstructure_lattice(vol_frac, dx, voxels, d_particle, offset=True, smallest_lattice=True, gradient=1):
+def create_microstructure_lattice(
+        vol_frac, 
+        dx, 
+        voxels, 
+        d_particle, 
+        offset=True, 
+        smallest_lattice=True, 
+        gradient=1,     # not currently used
+        ):
     from scipy.optimize import fsolve
 
     N = voxels
@@ -1234,6 +1306,7 @@ def PDF_analysis(scale, probability_value):
     return root
 
 def downscale_domain(domain, scale=2):
+    # scale=2 means that (2,2,2) voxels are converted to (1,1,1) voxel
     # scale can only be 1, 2, 4, 8, 16, ...
     if scale == 1:
         return domain
@@ -1293,13 +1366,16 @@ def downscale_domain(domain, scale=2):
 
 def upscale_domain(domain, scale=2):
     """
-    This function does not upscale the physical resolution of the domain.
+    This function does not upscale the image resolution of the domain.
     Instead it only makes the computational cells smaller. It does not affect the 
-    spatial resolution of the initial image.
+    spatial resolution of the initial image in terms of topological features.
+    it preserves the topology of the domain.
+    This function can be used to show that the current model is independent of grid size as long as 
+    the grid size is smaller than the characteristic length scale of topological features of the domain.
     """
 
     for _ in range(int(np.log(scale)/np.log(2))):
-        shape_up = np.array(domain.shape)*scale
+        shape_up = np.array(domain.shape)*2
         domain_up = np.zeros(shape=shape_up)
 
         if domain.ndim == 3:
@@ -1640,6 +1716,7 @@ def add_roughness_all_phases(domain_smooth, labels=None, iteration=1, d_rough=6)
                 labels=l,  
                 d_rough=D)
             
+        # for the next iteration, reduce the roughness size by half
         D = D//2
     
     return domain_rough
@@ -1670,7 +1747,7 @@ def measure_interface(domain, labels=None, output='binary'):
 def create_circle(diameter, output='total'):
     I,J = np.indices((diameter,diameter))
     circle = np.zeros((diameter,diameter))+1
-    circle[(I-diameter//2)**2+(J-diameter//2)**2 <= (diameter//2)**2] = 2
+    circle[(I-diameter/2)**2+(J-diameter/2)**2 <= (diameter/2)**2] = 2
     
     # pad the circle
     circle = np.pad(circle,
@@ -1683,7 +1760,7 @@ def create_circle(diameter, output='total'):
     elif output == 'half':
         return circle[N//2:,:]
     elif output == 'quarter':
-        return circle[N//2:,:N//2]
+        return circle[N//2:,N//2:]
     
 def correct_overlapping_fibres(location_in_bed, new_fibre):
     location_in_bed += new_fibre
@@ -1702,3 +1779,37 @@ def create_vertices_in_uniform_grid(N):
 
     vertices = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
     return vertices
+
+def subgrid_transformation(TPB_mask, TPB_mask_scaled):
+    N_orig = TPB_mask.shape
+    N_scaled = TPB_mask_scaled.shape
+
+    downscale_factor = N_orig[0]//N_scaled[0]
+
+    # get the indices of the TPB_mask_scaled
+    indices_orig = np.where(TPB_mask)
+    indices_scaled = np.where(TPB_mask_scaled)
+
+    n_TPBs_orig = np.zeros_like(indices_scaled[0])
+    TPB_scaled_transformed = np.zeros_like(TPB_mask_scaled, dtype=int)
+
+    # for index in range(len(indices[0])):
+
+    for index in range(len(indices_scaled[0])):
+        i_scaled = indices_scaled[0][index]
+        j_scaled = indices_scaled[1][index]
+        k_scaled = indices_scaled[2][index]
+
+        i_orig = [i_scaled*downscale_factor, i_scaled*downscale_factor+downscale_factor]
+        j_orig = [j_scaled*downscale_factor, j_scaled*downscale_factor+downscale_factor]
+        k_orig = [k_scaled*downscale_factor, k_scaled*downscale_factor+downscale_factor]
+
+        n_TPBs_orig[index] = np.sum(TPB_mask[i_orig[0]:i_orig[1], j_orig[0]:j_orig[1], k_orig[0]:k_orig[1]])
+        TPB_scaled_transformed[i_scaled,j_scaled,k_scaled] = n_TPBs_orig[index]
+    
+    from modules.postprocess import visualize_mesh as vm
+    vm(
+        [TPB_mask_scaled, TPB_mask],
+        # thd=[(),()],
+        )
+    return None
