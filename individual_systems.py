@@ -35,12 +35,12 @@ def solve_individual_systems(id):
     inputs['boundary_conditions']['Vio_b'] = 0
 
     if file_options['new_case']:
-        domain = tpl.create_microstructure(inputs, display=False)
-        domain, TPB_dict = tpl.topological_operations(inputs, domain, show_TPB=False, show_TPB_variations=False)
+        domain, domain_org = tpl.create_microstructure(inputs, display=False)
+        domain, TPB_dict = tpl.topological_operations(inputs, [domain, domain_org], show_TPB=False, show_TPB_variations=False)
         if inputs['solver_options']['image_analysis_only']: return
-        field_functions, _, bc_dict = prep.sourcefunc_calc(inputs, TPB_dict)
+        field_functions, _, bc_dict, K = prep.sourcefunc_calc(inputs, TPB_dict)
         masks_dict, indices =prep.get_indices_all(inputs, domain, TPB_dict)
-        J, rhs, sum_nb = prep.create_SOLE_individual(inputs, bc_dict, indices, masks_dict)
+        J, rhs, sum_nb = prep.create_SOLE_individual(inputs, bc_dict, indices, masks_dict, K)
         if file_options['save_case']:
             fop.save_case_individual(f'case_{file_options["id"]}',
                 inputs, indices, J, rhs, field_functions, masks_dict, sum_nb, TPB_dict, bc_dict)
@@ -94,7 +94,7 @@ def solve_individual_systems(id):
             'Ia_1D':        True,
             'eta_act_1D':   False,
             'eta_con_1D':   False,
-            'cH2_3D':       False,
+            'cH2_3D':       True,
             'Vel_3D':       False,
             'Vio_3D':       True,
             'Ia_3D':        True,

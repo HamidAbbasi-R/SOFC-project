@@ -1,4 +1,7 @@
-def sourcefunc_calc(inputs, TPB_dict):
+def sourcefunc_calc(
+        inputs, 
+        TPB_dict,
+        ):
     print("Source function calculations...", end='')
     from sympy import diff, exp, lambdify, log, simplify, symbols
     import numpy as np
@@ -8,6 +11,12 @@ def sourcefunc_calc(inputs, TPB_dict):
     Ru = 8.31446261815324   # Universal gas constant [J/mol/K]
     F = 96485.33289         # Faraday's constant [C/mol]
     aa = 0.5                # anode transfer coefficient []
+
+    # conductivities
+    cond_H2 = 2.17e6        # [m^2/s]
+    cond_el = 3.27e6 - 1065.3 * inputs['operating_conditions']['T']       # [S/m]
+    cond_ion = 3.34e4 * np.exp(-10350/inputs['operating_conditions']['T'])    # [S/m]
+    K = [cond_H2, cond_el, cond_ion] 
 
     T = inputs['operating_conditions']['T']
 
@@ -65,7 +74,7 @@ def sourcefunc_calc(inputs, TPB_dict):
 
     # Tseronis et al. 2012 model for anode current density
     n = 2       # number of electrons transferred per reaction
-    if inputs['solver_options']['ion_only']:
+    if inputs['solver_options']['transport_eqs'] == ['ion']:
         eta_a_con = Ru*T/n/F*np.log(pH2_inlet/pH2_b*pH2O_b/pH2O_inlet)         # anode concentration overpotential [V]
         if eta_a_con > (Vel_b - Vio_b):
             raise ValueError('Concentration overpotential is greater than the difference between ion and electron potentials.')
@@ -87,8 +96,8 @@ def sourcefunc_calc(inputs, TPB_dict):
 
     # initialize the source function list
     source_func = [None]*3         # initialization
-    source_func[0] = simplify(-Ia/n/F*MH2) if inputs['solver_options']['ion_only'] is False else None # mass [kg/m3/s]
-    source_func[1] = simplify(-Ia) if inputs['solver_options']['ion_only'] is False else None            # electron [A/m3]
+    source_func[0] = simplify(-Ia/n/F*MH2) if inputs['solver_options']['transport_eqs'] != ['ion'] else None # mass [kg/m3/s]
+    source_func[1] = simplify(-Ia) if inputs['solver_options']['transport_eqs'] != ['ion'] else None            # electron [A/m3]
     source_func[2] = simplify(Ia)           # ion [A/m3]
     expected_sign = [-1,-1,1]             # expected sign of the source terms
     # source_func[0] = exp(-cH2**2 - Vel**2 - Vio**2)       # test case
@@ -98,8 +107,9 @@ def sourcefunc_calc(inputs, TPB_dict):
     # source term treatment
     f = [None]*3
     fp = [None]*3
+    phase_names = ['gas', 'elec', 'ion']
     for p in [0,1,2]:
-        if inputs['solver_options']['ion_only'] and p!=2:
+        if phase_names[p] not in inputs['solver_options']['transport_eqs']:
             continue
         f[p] = lambdify(vars, source_func[p]) #[kg/m3/s] or [A/m3]
         fp[p] = lambdify(vars, diff(source_func[p], vars[p]))
@@ -113,6 +123,13 @@ def sourcefunc_calc(inputs, TPB_dict):
     Vio_max = 2             # maximum ionic potential [V]
     thd = [[cH2_min,cH2_max], [Vel_min,Vel_max], [Vio_min,Vio_max]]
 
+    # Flux values at top and bottom boundaries
+    # This is just an approximation of the gradient in X direction
+    gradient_ion_X = Vel_b/inputs['microstructure']['length']['X']     # [V/m] 
+    # Ratio of ion potential gradient in Z direction to ion potential gradient in X direction
+    C = inputs['boundary_conditions']['flux_Z_constant']    # [-]
+    gradient_ion_Z = C * gradient_ion_X     # [V/m]
+    flux_ion_Z = gradient_ion_Z * K[2]      # [A/m^2]
 
     field_functions = {
         'f': f,
@@ -162,15 +179,19 @@ def sourcefunc_calc(inputs, TPB_dict):
     'East':   ['Dirichlet', Vio_b],           
     'South':  ['Neumann', 0],
     'North':  ['Neumann', 0],
-    'Bottom': ['Neumann', 0],
-    'Top':    ['Neumann', 0]}]
+    'Bottom': ['Neumann', -flux_ion_Z],
+    'Top':    ['Neumann', flux_ion_Z]}]
 
     bc_dict = bc
 
     print("Done!")
-    return field_functions, thd, bc_dict
+    return field_functions, thd, bc_dict, K
 
-def get_indices_all(inputs, domain, TPB_dict):
+def get_indices_all(
+        inputs, 
+        domain, 
+        TPB_dict,
+        ):
     print('Identifying neighboring cells and obtaining indices...', end=' ')
     import numpy as np
     TPB_mask = TPB_dict['TPB_mask']
@@ -195,7 +216,13 @@ def get_indices_all(inputs, domain, TPB_dict):
     print('Done!')
     return masks_dict, indices
 
-def get_indices(inputs, domain, TPB_mask_old, ds, phase):
+def get_indices(
+        inputs, 
+        domain, 
+        TPB_mask_old, 
+        ds, 
+        phase,
+        ):
     import numpy as np
     import concurrent.futures 
     # import multiprocessing as mp
@@ -229,7 +256,8 @@ def get_indices(inputs, domain, TPB_mask_old, ds, phase):
     
     flag_west, flag_east, flag_south, flag_north, flag_bottom, flag_top = np.zeros(shape=(6, L), dtype=int)-1
     
-    if not(inputs['solver_options']['ion_only'] and phase!=2): 
+    phase_names = ['gas', 'elec', 'ion']
+    if phase_names[phase] in inputs['solver_options']['transport_eqs']: 
         with concurrent.futures.ProcessPoolExecutor() as executor:
             WE_res = executor.submit(get_flags, ind_west_stack, ind_east_stack, ind_stack, L)
             SN_res = executor.submit(get_flags, ind_south_stack, ind_north_stack, ind_stack, L)
@@ -302,13 +330,15 @@ def get_indices(inputs, domain, TPB_mask_old, ds, phase):
 
     return indices_dict
 
-def create_SOLE_individual(inputs, bc_dict, indices, masks_dict):
+def create_SOLE_individual(
+        inputs, 
+        bc_dict, 
+        indices, 
+        masks_dict,
+        K,
+        ):
     print('Writing Jacobian and rhs matrix...', end=' ')
     import numpy as np
-    cond_H2 = 2.17e6        # [m^2/s]
-    cond_el = 3.27e6 - 1065.3 * inputs['operating_conditions']['T']       # [S/m]
-    cond_ion = 3.34e4 * np.exp(-10350/inputs['operating_conditions']['T'])    # [S/m]
-    K = [cond_H2, cond_el, cond_ion] 
 
     dx = inputs['microstructure']['dx']
 
@@ -326,8 +356,9 @@ def create_SOLE_individual(inputs, bc_dict, indices, masks_dict):
     M_ins = inputs['M_instances']
     scaling_factor = inputs['scaling_factor']
 
+    phase_names = ['gas', 'elec', 'ion']
     for p in [0,1,2]: # only solve the ion phase, otherwise: for p in [0,1,2]:
-        if inputs['solver_options']['ion_only'] and p!=2:
+        if phase_names[p] not in inputs['solver_options']['transport_eqs']:
             continue
         J[p], rhs[p] = boundaries_individual(K[p], dx, bc[p], indices[p], N, isMi, M_ins, scaling_factor)
         J[p], sum_nb[p] = interior_individual(J[p], indices[p], K[p], ds[p], dx, bc[p], isMi, M_ins, scaling_factor)
@@ -335,7 +366,16 @@ def create_SOLE_individual(inputs, bc_dict, indices, masks_dict):
     print('Done!')
     return J, rhs, sum_nb
 
-def boundaries_individual(K, dx, bc, indices, N, isMi, M_ins=None, scaling_factor=None):
+def boundaries_individual(
+        K, 
+        dx, 
+        bc, 
+        indices, 
+        N, 
+        isMi, 
+        M_ins=None, 
+        scaling_factor=None,
+        ):
     import numpy as np
     from scipy.sparse import lil_matrix
 
@@ -403,7 +443,15 @@ def boundaries_individual(K, dx, bc, indices, N, isMi, M_ins=None, scaling_facto
 
     return J, rhs
 
-def interior_individual_obsolete(J, indices, K, ds, dx, M_instances=None, scaling_factor=None):
+def interior_individual_obsolete(
+        J, 
+        indices, 
+        K, 
+        ds, 
+        dx, 
+        M_instances=None, 
+        scaling_factor=None,
+        ):
     import numpy as np
     L = len(indices['all_points'])
     sum_nb = np.zeros(shape = L, dtype = float) # sigma a_nb vector
@@ -449,7 +497,17 @@ def interior_individual_obsolete(J, indices, K, ds, dx, M_instances=None, scalin
     
     return J, sum_nb
 
-def interior_individual(J, indices, K, ds, dx, bc, isMi, M_ins=None, scaling_factor=None):
+def interior_individual(
+        J, 
+        indices, 
+        K, 
+        ds, 
+        dx, 
+        bc, 
+        isMi, 
+        M_ins=None, 
+        scaling_factor=None,
+        ):
     import numpy as np
     L = len(indices['all_points'])
     sum_nb = np.zeros(shape = L, dtype = float) # sigma a_nb vector
@@ -506,7 +564,12 @@ def interior_individual(J, indices, K, ds, dx, bc, isMi, M_ins=None, scaling_fac
     
     return J, sum_nb
 
-def initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict):
+def initilize_field_variables_individual(
+        inputs, 
+        masks_dict, 
+        indices, 
+        bc_dict,
+        ):
     # initial guess
     import numpy as np
     print('Initializing field variables...', end = ' ')
@@ -549,7 +612,10 @@ def initilize_field_variables_individual(inputs, masks_dict, indices, bc_dict):
     return phi, residuals
 
 # specific functions for the entire cell
-def sourcefunc_calc_entire_cell(inputs, TPB_dict):
+def sourcefunc_calc_entire_cell(
+        inputs, 
+        TPB_dict,
+        ):
     """
     Calculates the source function for the entire cell.
     phases:
@@ -760,7 +826,11 @@ def sourcefunc_calc_entire_cell(inputs, TPB_dict):
     print("Done!")
     return field_functions, bc_dict
 
-def get_indices_entire_cell(inputs, domain_entire, TPB_dict):
+def get_indices_entire_cell(
+        inputs, 
+        domain_entire, 
+        TPB_dict,
+        ):
     import numpy as np
 
     print('Identifying neighbors and getting indices...', end=' ')
@@ -793,7 +863,12 @@ def get_indices_entire_cell(inputs, domain_entire, TPB_dict):
     print('Done!')
     return masks_dict, indices
 
-def create_SOLE_individual_entire_cell(inputs, bc_dict, indices, masks_dict):
+def create_SOLE_individual_entire_cell(
+        inputs, 
+        bc_dict, 
+        indices, 
+        masks_dict,
+        ):
     print('Writing Jacobian and rhs matrix...', end=' ')
     K = [inputs['K_pores_a'], inputs['K_Ni'], inputs['K_YSZ'], inputs['K_pores_c'], inputs['K_LSM']]
     N_a = [inputs['Nx_a'], inputs['Ny'], inputs['Nz']]
@@ -823,7 +898,13 @@ def create_SOLE_individual_entire_cell(inputs, bc_dict, indices, masks_dict):
     print('Done!')
     return J, rhs, sum_nb
 
-def initilize_field_variables_individual_entire_cell(inputs, indices, isMi, M_instances = None, scaling_factor = None):
+def initilize_field_variables_individual_entire_cell(
+        inputs, 
+        indices, 
+        isMi, 
+        M_instances = None, 
+        scaling_factor = None,
+        ):
     # initial guess
     import numpy as np
     residuals = [[]]*5
@@ -860,7 +941,12 @@ def initilize_field_variables_individual_entire_cell(inputs, indices, isMi, M_in
 
     return phi, residuals
 
-def get_flags(ind_1_stack, ind_2_stack, ind_stack, L):
+def get_flags(
+        ind_1_stack, 
+        ind_2_stack, 
+        ind_stack, 
+        L,
+        ):
     import numpy as np
     flag_1, flag_2 = np.zeros(shape=(2, L), dtype=int)-1
     a = 0

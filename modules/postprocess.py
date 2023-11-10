@@ -9,8 +9,9 @@ def visualize_residuals(inputs, residuals):
     df = [None]*3
     titles = ['Hydrogen concentration', 'Electron potential', 'Ion potential']
 
+    phase_names = ['gas', 'elec', 'ion']
     for p in [0,1,2]:
-        if inputs['solver_options']['ion_only'] and p!=2:
+        if phase_names[p] not in inputs['solver_options']['transport_eqs']:
             continue
         r[p] = np.stack((x, residuals[p]), axis=-1)
         df[p] = pd.DataFrame(r[p], columns=['iteration', 'residual'])
@@ -31,10 +32,10 @@ def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
 
     if plot3D_flag:
         import pyvista as pv
-        vertices = TPB_dict['vertices']
         lines = TPB_dict['lines']
         pv.set_plot_theme("document")
-        TPB_mesh = pv.PolyData(vertices, lines=lines)
+        from modules.topology import create_vertices_in_uniform_grid as cvug
+        TPB_mesh = pv.PolyData(cvug(dense_m['phi_dense'].shape), lines=lines)
     
     dx = inputs['microstructure']['dx']
     mats = []
@@ -156,14 +157,18 @@ def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
             thds.append(())
             titles.append('e_con')
             log_scale.append(False)
+            
 
+        TPB_mats = [TPB_mesh]*len(mats)
         visualize_mesh(
             mat = mats,
             thd = thds,
             titles = titles,
             clip_widget = False, 
-            TPB_mesh = TPB_mesh,
-            log_scale = log_scale)
+            TPB_mesh = TPB_mats,
+            log_scale = log_scale,
+            link_views=True,
+            )
     
     return Ia_A_avg
 
@@ -332,6 +337,7 @@ def visualize_mesh(
         link_views=False,
         cmap='viridis',
         save_vtk=False,
+        show_axis=False,
         ):
     """
     Visualizes the mesh via PyVista.
@@ -366,6 +372,7 @@ def visualize_mesh(
             notebook=False, 
             off_screen=True if save_graphics else False,
             )
+        if show_axis: p.show_axes()
     
     for i in np.arange(subplts):
         scale = log_scale[i] if log_scale is not None else False
@@ -487,30 +494,32 @@ def visualize_contour(mat, n_levels=5):
     import matplotlib.pyplot as plt
 
     pv.set_plot_theme("document")
-    cmap = plt.cm.get_cmap("jet")
+    cmap_contur = plt.cm.get_cmap("viridis")
 
-    N=mat.shape[0]
+    N=mat.shape
 
     # Initializing grids
-    mesh = pv.ImageData(dimensions=(N+1,N+1,N+1))
+    mesh = pv.ImageData(dimensions=(N[0]+1,N[1]+1,N[2]+1))
     mesh.cell_data["data"] = mat.flatten()
     mesh = mesh.threshold()
     mesh = mesh.cell_data_to_point_data()
 
     p = pv.Plotter(notebook=False)
     contours = mesh.contour(np.linspace(np.nanmin(mat), np.nanmax(mat), n_levels))    
-    p.add_mesh(contours, cmap=cmap)
 
     # show the solid phase [needs improvement]
-    # solid = np.zeros_like(mat)
-    # solid[np.isnan(mat)] = 1
-    # solid[~np.isnan(mat)] = np.nan
-    # mesh_s = pv.ImageData(dimensions=(N+1,N+1,N+1))
-    # mesh_s.cell_data["data"] = solid.flatten()
-    # mesh_s = mesh_s.threshold()
-    # cmap = plt.cm.get_cmap("Greys")
-    # p.add_mesh(mesh_s, cmap=cmap,opacity=0.5)
-
+    solid = np.zeros_like(mat)
+    solid[np.isnan(mat)] = np.nan
+    solid[~np.isnan(mat)] = 1
+    mesh_s = pv.ImageData(dimensions=(N[0]+1,N[1]+1,N[2]+1))
+    mesh_s.cell_data["data"] = solid.flatten()
+    mesh_s = mesh_s.threshold()
+    cmap_solid = plt.cm.get_cmap("Greys")
+    
+    # p.add_mesh(mesh_s, cmap=cmap_solid, opacity=0.1)
+    p.add_mesh(contours, cmap=cmap_contur)
+    p.add_bounding_box(line_width=1, color='black')
+    p.show_axes()
     p.show()
     
     return None

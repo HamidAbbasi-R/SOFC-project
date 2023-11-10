@@ -16,6 +16,7 @@ def threshold(phi_new, masks_dict, thd):
 def Newton_loop_individual(inputs, J, rhs, phi, indices, field_functions, masks_dict, sum_nb, residuals):
     import numpy as np
     from scipy.sparse import linalg
+    from time import time
 
     prev_iters = len(residuals[0])
     iter = prev_iters
@@ -24,24 +25,28 @@ def Newton_loop_individual(inputs, J, rhs, phi, indices, field_functions, masks_
     while iter < prev_iters+inputs['solver_options']['max_iter_non']:
     
         # update J[n,n] and rhs[b] for interior points (source==True)
+        t = time()
         J, rhs = update_interior(
             inputs, J, rhs, indices, 
             field_functions, phi, ds,sum_nb)
-        
+        time_update_J = time() - t
+
         # scaling here
         J_scl, rhs_scl = matrix_scaling_individual(inputs, J, rhs)
 
         # solve the linear loop with the exact Jacobian matrix for a few iterations
         phi_new = [None]*3
+        phase_names = ['gas', 'elec', 'ion']
+        t = time()
         for p in [0,1,2]:
-            if inputs['solver_options']['ion_only'] and p != 2:
+            if phase_names[p] not in inputs['solver_options']['transport_eqs']:
                 phi_new[p] = phi[p]
                 continue
             phi_new[p], _ = linalg.gmres(J_scl[p], rhs_scl[p], x0=phi[p], maxiter=inputs['solver_options']['max_iter_lin'], tol=1e-20)
-
+        time_gmres = time() - t
         
         # error monitoring here
-        max_res, residuals = error_monitoring_individual(inputs, phi, phi_new, J, rhs, residuals, iter)
+        max_res, residuals = error_monitoring_individual(inputs, phi, phi_new, J, rhs, residuals, iter, time_update_J, time_gmres)
         
         # updating the solution here
         phi = update_phi_individual(phi, phi_new, inputs['solver_options']['uf'])
@@ -81,8 +86,9 @@ def update_interior(inputs, J, rhs, indices, field_functions, phi, ds, sum_nb):
         j_max = N[1]-1
         j_seg = j_max//M_ins+1
 
+    phase_names = ['gas', 'elec', 'ion']
     for phase in [0,1,2]:
-        if inputs['solver_options']['ion_only'] and phase != 2:
+        if phase_names[phase] not in inputs['solver_options']['transport_eqs']:
             continue
         p = [[]]*3
         phi_block = [[]]*2
@@ -138,8 +144,9 @@ def matrix_scaling_individual(inputs, J, rhs):
     J_scl = [None]*3
     rhs_scl = [None]*3
 
+    phase_names = ['gas', 'elec', 'ion']
     for p in [0,1,2]:       # Only solve for ion transport, otherwise: for p in [0,1,2]:
-        if inputs['solver_options']['ion_only'] and p != 2:
+        if phase_names[p] not in inputs['solver_options']['transport_eqs']:
             continue
         scl_vec[p] = 1/J[p].diagonal(0).ravel()
         scl_mat[p] = diags(scl_vec[p])
@@ -148,12 +155,23 @@ def matrix_scaling_individual(inputs, J, rhs):
 
     return J_scl, rhs_scl
 
-def error_monitoring_individual(inputs, phi, phi_new, J_scl, rhs_scl, residuals, iter):
+def error_monitoring_individual(
+        inputs, 
+        phi, 
+        phi_new, 
+        J_scl, 
+        rhs_scl, 
+        residuals, 
+        iter,
+        time_update_J,
+        time_gmres,
+        ):
     import numpy as np
 
     res = [None]*len(phi)
+    phase_names = ['gas', 'elec', 'ion']
     for p in range(len(phi)):
-        if inputs['solver_options']['ion_only'] and p != 2:
+        if phase_names[p] not in inputs['solver_options']['transport_eqs']:
             residuals[p] = residuals[p] + [10]       # arbitrary large number
             continue
         # res[p] = rhs_scl[p] - J_scl[p].tocsr()@phi_new[p]    # first method
@@ -161,21 +179,27 @@ def error_monitoring_individual(inputs, phi, phi_new, J_scl, rhs_scl, residuals,
         residuals[p] = residuals[p] + [np.linalg.norm(res[p])/np.linalg.norm(phi_new[p])]
 
     if len(phi) == 3:
-        if inputs['solver_options']['ion_only']:
-            max_res = residuals[2][iter]
-        else:
-            max_res = max(residuals[0][iter], residuals[1][iter], residuals[2][iter])
+        phases = [0,1,2]
+        for p in [0,1,2]:
+            if phase_names[p] not in inputs['solver_options']['transport_eqs']:
+                phases.remove(p)
+        max_res = 0
+        for i in range(len(phases)):
+            max_res = max(max_res, residuals[phases[i]][iter])
+
     elif len(phi) == 5:
         max_res = max(residuals[0][iter], residuals[1][iter], residuals[2][iter], residuals[3][iter], residuals[4][iter])
     
     if len(phi) == 3:
         if iter % 10 == 0:
-            print('\nIter:  res cH2:       res Vel:       res Vio:')
-            print('-----------------------------------------------')
-        if inputs['solver_options']['ion_only']:
-            print(f'{iter:<7}Not solved     Not solved     {residuals[2][iter]:<.2e}')
+            print('\nIter:  res cH2:       res Vel:       res Vio:       time GMRES:    time update J:', flush=True)
+            print('----------------------------------------------------------------------------------', flush=True)
+        if inputs['solver_options']['transport_eqs'] == ['ion']:
+            print(f'{iter:<7}Not solved     Not solved     {residuals[2][iter]:<15.2e}{time_gmres:<15.1e}{time_update_J:<.1e}', flush=True)
+        elif inputs['solver_options']['transport_eqs'] == ['ion', 'gas']:
+            print(f'{iter:<7}{residuals[0][iter]:<15.2e}Not solved     {residuals[2][iter]:<15.2e}{time_gmres:<15.1e}{time_update_J:<.1e}', flush=True)
         else:
-            print(f'{iter:<7}{residuals[0][iter]:<15.2e}{residuals[1][iter]:<15.2e}{residuals[2][iter]:<.2e}')
+            print(f'{iter:<7}{residuals[0][iter]:<15.2e}{residuals[1][iter]:<15.2e}{residuals[2][iter]:<15.2e}{time_gmres:<15.1e}{time_update_J:<.1e}', flush=True)
     if len(phi) == 5:
         if iter % 10 == 0:
             print('\nIter:  res0:       res1:       res2:       res3:       res4:')
