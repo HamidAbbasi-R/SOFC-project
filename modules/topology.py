@@ -619,12 +619,20 @@ def remove_thin_boundaries(phase_mat):
     phase_mat : float
         Three dimensional matrix describing the phase data.
     """
+    # if phase_mat.ndim==2 then treat it as a 3D with two identical layers
+    flag_2D = False
+    if phase_mat.ndim==2:
+        phase_mat = np.stack((phase_mat,phase_mat),axis=0)
+        flag_2D = True
     phase_mat[ : , : , 0][phase_mat[:,:,0]  != phase_mat[:,:,1] ] = np.nan
     phase_mat[ : , : ,-1][phase_mat[:,:,-1] != phase_mat[:,:,-2]] = np.nan
     phase_mat[ : , 0 , :][phase_mat[:,0,:]  != phase_mat[:,1,:] ] = np.nan
     phase_mat[ : ,-1 , :][phase_mat[:,-1,:] != phase_mat[:,-2,:]] = np.nan
     phase_mat[ 0 , : , :][phase_mat[0,:,:]  != phase_mat[1,:,:] ] = np.nan
     phase_mat[-1 , : , :][phase_mat[-1,:,:] != phase_mat[-2,:,:]] = np.nan
+
+    if flag_2D:
+        phase_mat = phase_mat[0,:,:]
     return phase_mat
 
 def remove_edges(phi):
@@ -744,7 +752,7 @@ def create_microstructure(inputs, display=False):
 
     if display:
         from modules.postprocess import visualize_mesh as vm
-        vm([domain], [(2,3)])
+        vm([domain], [(1,3)], show_axis=True)
 
     print('Done!')
     return domain, domain_org

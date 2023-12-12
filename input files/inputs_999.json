@@ -8,32 +8,36 @@
         "id": "999"
     },
     "microstructure": {
-        "dx": 50E-9,
-        "average_diameter": 500E-9,
+        "dx": 50e-09,
+        "average_diameter": 500e-09,
         "volume_fractions": {
             "pores": 0.4,
-            "Ni":    0.3,
-            "YSZ":   0.3
+            "Ni": 0.3,
+            "YSZ": 0.3
         },
         "length": {
-            "X": 50E-6,
-            "Y": 10E-6,
-            "Z": 10E-6
+            "X": 20e-06,
+            "Y": 7e-06,
+            "Z": 7e-06
         },
-        "type": "lattice",
+        "type": "plurigaussian",
         "plurigaussian": {
-            "gradient_factor": 1,
-            "seed": [12,73],
+            "gradient_factor": 0,
+            "seed": [72,27],
             "reduced_geometry": {
                 "flag": false,
-                "Lx_extended": 1E-5
+                "Lx_extended": 1e-05
             }
         },
         "fibrous_bed": {
             "fibre_length": 9e-06,
             "frequency": 8,
             "overlap": 1.2,
-            "rotation_max": [0,0,90],
+            "rotation_max": [
+                0,
+                0,
+                90
+            ],
             "bend_max": 1.2
         },
         "lattice_geometry": {
@@ -41,26 +45,31 @@
         },
         "roughness_flag": false,
         "roughness_iters": 3,
-        "d_roughness": 30E-9,
+        "d_roughness": 3e-08,
         "infiltration_loading": 0,
-        "scale_factor": 1
+        "downscale_factor": 1,
+        "upscale_factor": 1,
+        "sigma_segmentation": 5
     },
     "boundary_conditions": {
         "pH2_inlet": 0.95,
-        "pH2_b": 0.95,
-        "Vel_b": 0.5,
-        "Vio_b": 0
+        "pH2_b": [0.95,0.95],
+        "Vel_b": [0.5,0.5],
+        "Vio_b": [0.0,0.4],
+        "flux_Z_constant": 0
     },
     "operating_conditions": {
         "T": 1073,
         "P": 1
     },
     "solver_options": {
+        "subgrid": false,
+        "image_segmentation": false,
         "image_analysis_only": false,
-        "ion_only": true,
+        "transport_eqs": ["ion"],
         "max_iter_non": 300,
-        "max_iter_lin": 20,
-        "tol": 5E-5,
+        "max_iter_lin": 10,
+        "tol": 5e-05,
         "uf": {
             "cH2": 0.9,
             "Vel": 0.9,

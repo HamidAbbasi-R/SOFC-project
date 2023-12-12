@@ -122,42 +122,41 @@ def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
         if plot1D_flag: plot_with_continuous_error(x, Ia_A_avg, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title=f'Ia_A_{inputs["file_options"]["id"]}', save_img=img_flag)
 
     if inputs['output_options']['show_3D_plots']:
-        if plots['cH2_3D'] and plot3D_flag:
+        if plots['cH2_3D']:
             mats.append(dense_cH2)
             thds.append(())
             titles.append('cH2')
             log_scale.append(False)
 
-        if plots['Vel_3D'] and plot3D_flag:
+        if plots['Vel_3D']:
             mats.append(dense_Vel)
             thds.append(())
             titles.append('Vel')
             log_scale.append(False)
         
-        if plots['Vio_3D'] and plot3D_flag:
+        if plots['Vio_3D']:
             mats.append(dense_Vio)
             thds.append(())
             titles.append('Vio')
             log_scale.append(False)
 
-        if plots['Ia_3D'] and plot3D_flag:
+        if plots['Ia_3D']:
             mats.append(dense_Ia*dx**3)     # show the figure in [A] not [A/m3]
             thds.append(())
             titles.append('Ia')
-            log_scale.append(True)
+            log_scale.append(False)         # might be True for better visualization
 
-        if plots['eta_act_3D']and plot3D_flag:
+        if plots['eta_act_3D']:
             mats.append(dense_eta_act)
             thds.append(()) 
             titles.append('e_act')
             log_scale.append(False)
 
-        if plots['eta_con_3D'] and plot3D_flag:
+        if plots['eta_con_3D']:
             mats.append(dense_eta_con)
             thds.append(())
             titles.append('e_con')
             log_scale.append(False)
-            
 
         TPB_mats = [TPB_mesh]*len(mats)
         visualize_mesh(
@@ -168,6 +167,7 @@ def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
             TPB_mesh = TPB_mats,
             log_scale = log_scale,
             link_views=True,
+            show_axis=True,
             )
     
     return Ia_A_avg
@@ -338,6 +338,7 @@ def visualize_mesh(
         cmap='viridis',
         save_vtk=False,
         show_axis=False,
+        link_colorbar=False,
         ):
     """
     Visualizes the mesh via PyVista.
@@ -353,9 +354,12 @@ def visualize_mesh(
      
     if thd is None: thd = [()]*len(mat)
 
-    zmin = min([np.nanmin(m) for m in mat])
-    zmax = max([np.nanmax(m) for m in mat])
-    clim = [zmin, zmax]
+    if link_colorbar:
+        zmin = min([np.nanmin(m) for m in mat])
+        zmax = max([np.nanmax(m) for m in mat])
+        clim = [zmin, zmax]
+    else:
+        clim = None
     
     subplts = len(mat)
     
@@ -609,7 +613,15 @@ def visualize_3D_matrix_entire_cell(inputs, phi_dense, masks_dict, TPB_dict, tit
 
         plot_with_continuous_error(x, Vio_lin, Vio_max, Vio_min, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title='Hydrogen concentration (kgm-3)')
 
-def create_dense_matrices(inputs, phi, masks_dict, indices, field_functions, TPB_dict):
+def create_dense_matrices(
+        inputs, 
+        phi, 
+        masks_dict, 
+        indices, 
+        field_functions, 
+        TPB_dict,
+        determine_gradients=False,
+        ):
     write_arrays = inputs['output_options']['write_arrays']
     ds = masks_dict['ds']
     N = ds[0].shape
@@ -617,9 +629,27 @@ def create_dense_matrices(inputs, phi, masks_dict, indices, field_functions, TPB
     phi_dense[ds[0]] = phi[0]
     phi_dense[ds[1]] = phi[1]
     phi_dense[ds[2]] = phi[2]
-    Ia_mat = create_TPB_field_variable_individual(phi_dense, indices, masks_dict, field_functions['Ia'])
-    eta_act_mat = create_TPB_field_variable_individual(phi_dense, indices, masks_dict, field_functions['eta_act'])
-    eta_conc_mat = create_field_variable_individual(N, phi_dense, indices[0], field_functions['eta_con'])
+    Ia_mat = create_TPB_field_variable_individual(
+        phi_dense, 
+        indices, 
+        masks_dict, 
+        field_functions['Ia'],
+        )
+    
+    eta_act_mat = create_TPB_field_variable_individual(
+        phi_dense, 
+        indices, 
+        masks_dict, 
+        field_functions['eta_act'],
+        )
+    
+    eta_conc_mat = create_field_variable_individual(
+        N, 
+        phi_dense, 
+        indices[0], 
+        field_functions['eta_con'],
+        )
+    
     sol_cH2 = np.copy(phi_dense)
     sol_cH2[ds[0] == False] = np.nan
     sol_Vel = np.copy(phi_dense)
@@ -629,14 +659,15 @@ def create_dense_matrices(inputs, phi, masks_dict, indices, field_functions, TPB
 
     if write_arrays:
         np.savez(f'Binary files/arrays/matrices_{inputs["file_options"]["id"]}.npz', 
-                 phi=phi_dense, 
-                 cH2=sol_cH2, 
-                 Vel=sol_Vel, 
-                 Vio=sol_Vio, 
-                 Ia=Ia_mat, 
-                 eta_act=eta_act_mat, 
-                 eta_con=eta_conc_mat,
-                 lines=TPB_dict['lines'])
+                 dx = inputs['microstructure']['dx'],
+                 phi = phi_dense, 
+                 cH2 = sol_cH2, 
+                 Vel = sol_Vel, 
+                 Vio = sol_Vio, 
+                 Ia = Ia_mat, 
+                 eta_act = eta_act_mat, 
+                 eta_con = eta_conc_mat,
+                 lines = TPB_dict['lines'])
 
     dense_m = {
         'phi_dense': phi_dense,
@@ -645,7 +676,7 @@ def create_dense_matrices(inputs, phi, masks_dict, indices, field_functions, TPB
         'Vio': sol_Vio, 
         'Ia': Ia_mat, 
         'eta_act': eta_act_mat, 
-        'eta_con': eta_conc_mat
+        'eta_con': eta_conc_mat,
         }
     return dense_m
 

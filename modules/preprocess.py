@@ -1,6 +1,7 @@
 def sourcefunc_calc(
         inputs, 
         TPB_dict,
+        plot_source_term=False,
         ):
     print("Source function calculations...", end='')
     from sympy import diff, exp, lambdify, log, simplify, symbols
@@ -21,11 +22,11 @@ def sourcefunc_calc(
     T = inputs['operating_conditions']['T']
 
     # boundary conditions
-    pH2_b = inputs['boundary_conditions']['pH2_b'] * 101325      # partial pressure of hydrogen @ anode boundary, bulk [Pa]
+    pH2_b = inputs['boundary_conditions']['pH2_b'][0] * 101325      # partial pressure of hydrogen @ anode boundary, bulk [Pa]
     pH2_inlet = inputs['boundary_conditions']['pH2_inlet'] * 101325      # partial pressure of hydrogen @ fuel cell inlet [Pa]
     ptot = inputs['operating_conditions']['P'] * 101325       # total pressure [Pa]
-    Vel_b = inputs['boundary_conditions']['Vel_b']      # electron potential @ anode boundary, bulk [V]
-    Vio_b = inputs['boundary_conditions']['Vio_b']      # ion potential @ anode boundary, bulk [V]
+    Vel_b = inputs['boundary_conditions']['Vel_b'][0]      # electron potential @ anode boundary, bulk [V]
+    Vio_b = inputs['boundary_conditions']['Vio_b'][0]      # ion potential @ electrolyte boundary, bulk [V]
 
     # other variables
     pH2O_b = ptot - pH2_b          # partial pressure of H2O @ anode boundary, bulk [Pa]
@@ -125,7 +126,8 @@ def sourcefunc_calc(
 
     # Flux values at top and bottom boundaries
     # This is just an approximation of the gradient in X direction
-    gradient_ion_X = Vel_b/inputs['microstructure']['length']['X']     # [V/m] 
+    # gradient_ion_X = Vel_b/inputs['microstructure']['length']['X']     # [V/m] 
+    gradient_ion_X = Vel_b/10e-6     # [V/m] assuming the thickness of the active layer is 10 um 
     # Ratio of ion potential gradient in Z direction to ion potential gradient in X direction
     C = inputs['boundary_conditions']['flux_Z_constant']    # [-]
     gradient_ion_Z = C * gradient_ion_X     # [V/m]
@@ -138,6 +140,23 @@ def sourcefunc_calc(
         'eta_act': lambdify([cH2, Vel, Vio], eta_a_act),
         'eta_con': lambdify([cH2], eta_a_con),
         'Ia': lambdify([cH2, Vel, Vio], Ia)}
+    
+    # plot variation of ion source term with ion potential
+    if plot_source_term:
+        import plotly.express as px
+        import plotly.graph_objects as go
+
+        Vio_range = np.linspace(0, Vel_b, 100)
+        source_term = f[2](cH2_b, Vel_b, Vio_range)
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=Vel_b-Vio_range, y=source_term))
+        fig.update_layout(
+            title='Ion source term variation with ion potential',
+            xaxis_title='(Electron potential - Ion potential) [V]',
+            yaxis_title='Ion source term [A/m3]',
+            )
+        # fig.update_yaxes(type="log", exponentformat='power', showexponent='all')
+        fig.show()
     
     bc = [{
     # boundary conditions:
@@ -152,9 +171,9 @@ def sourcefunc_calc(
     
     # the first phase [pores] ??
     # anode side
-    'West':   ['Dirichlet', cH2_b],       
+    'West':   ['Dirichlet', cH2_b, inputs['boundary_conditions']['pH2_b'][1]],       
     # electrolyte side
-    'East':   ['Neumann', 0],           
+    'East':   ['Neumann', 0],
     'South':  ['Neumann', 0],
     'North':  ['Neumann', 0],
     'Bottom': ['Neumann', 0],
@@ -163,9 +182,9 @@ def sourcefunc_calc(
 
     # the second phase [Nickel - electron] ??
     # anode side
-    'West':   ['Dirichlet', Vel_b],         
+    'West':   ['Dirichlet', Vel_b, inputs['boundary_conditions']['Vel_b'][1]],         
     # electrolyte side
-    'East':   ['Neumann', 0],           
+    'East':   ['Neumann', 0],
     'South':  ['Neumann', 0],
     'North':  ['Neumann', 0],
     'Bottom': ['Neumann', 0],
@@ -174,9 +193,9 @@ def sourcefunc_calc(
 
     # the third phase [YSZ - ion] ??
     # anode side
-    'West':   ['Neumann', 0],           
+    'West':   ['Neumann', 0],
     # electrolyte side
-    'East':   ['Dirichlet', Vio_b],           
+    'East':   ['Dirichlet', Vio_b, inputs['boundary_conditions']['Vio_b'][1]],           
     'South':  ['Neumann', 0],
     'North':  ['Neumann', 0],
     'Bottom': ['Neumann', -flux_ion_Z],
@@ -360,8 +379,8 @@ def create_SOLE_individual(
     for p in [0,1,2]: # only solve the ion phase, otherwise: for p in [0,1,2]:
         if phase_names[p] not in inputs['solver_options']['transport_eqs']:
             continue
-        J[p], rhs[p] = boundaries_individual(K[p], dx, bc[p], indices[p], N, isMi, M_ins, scaling_factor)
-        J[p], sum_nb[p] = interior_individual(J[p], indices[p], K[p], ds[p], dx, bc[p], isMi, M_ins, scaling_factor)
+        J[p], rhs[p], sum_nb[p] = boundaries_individual(K[p], dx, bc[p], indices[p], N, isMi, M_ins, scaling_factor)
+        J[p], sum_nb[p] = interior_individual(J[p], indices[p], K[p], ds[p], dx, bc[p], sum_nb[p], isMi, M_ins, scaling_factor)
 
     print('Done!')
     return J, rhs, sum_nb
@@ -382,6 +401,7 @@ def boundaries_individual(
     # initializing left hand side and right hand side of the system of equaitons
     L = len(indices['all_points'])
     rhs = np.zeros(shape = L, dtype = float) # right hand side vector
+    sum_nb = np.zeros(shape = L, dtype = float) # sigma a_nb vector
 
     # rhs = lil_matrix((1,L), dtype = float)
     J = lil_matrix((L,L), dtype = float) # sparse matrix
@@ -394,19 +414,41 @@ def boundaries_individual(
     # west side (i=0)
     if bc['West'][0] == 'Dirichlet':
         for n in indices['west_bound']:
-            _,j,_ = indices['all_points'][n]
+            _,j,k = indices['all_points'][n]
             sf = scaling_factor**(np.sum(j>=j_seg)-1) if isMi else 1
             J[n,n] = 1*K*dx     # aP
-            rhs[n] = bc['West'][1]*sf*K*dx
+            cte = bc['West'][1] + (k/N[2])*(bc['West'][2] - bc['West'][1])
+            rhs[n] = cte*sf*K*dx
+
+    if bc['West'][0] == 'Neumann' and bc['West'][1] != 0:
+        for n in indices['west_bound']:
+            _,j,_ = indices['all_points'][n]
+            sf = scaling_factor**(np.sum(j>=j_seg)-1) if isMi else 1
+            aE = -K*dx
+            J[n,indices['east_nb'][n]] = aE
+            sum_nb[n] = aE
+            J[n,n] = -aE
+            rhs[n] = bc['West'][1]*sf*dx**2
 
 
     # east side (i=N[0]-1)
     if bc['East'][0] == 'Dirichlet':
         for n in indices['east_bound']:
-            _,j,_ = indices['all_points'][n]
+            _,j,k = indices['all_points'][n]
             sf = scaling_factor**(np.sum(j>=j_seg)-1) if isMi else 1
             J[n,n] = 1*K*dx     # aP
-            rhs[n] = bc['East'][1]*sf*K*dx
+            cte = bc['East'][1] + (k/N[2])*(bc['East'][2] - bc['East'][1])
+            rhs[n] = cte*sf*K*dx
+
+    if bc['East'][0] == 'Neumann' and bc['East'][1] != 0:
+        for n in indices['east_bound']:
+            _,j,_ = indices['all_points'][n]
+            sf = scaling_factor**(np.sum(j>=j_seg)-1) if isMi else 1
+            aW = -K*dx
+            J[n,indices['west_nb'][n]] = aW
+            sum_nb[n] = aW
+            J[n,n] = -aW
+            rhs[n] = bc['East'][1]*sf*dx**2
 
 
     # south side (j=0)
@@ -415,12 +457,28 @@ def boundaries_individual(
             J[n,n] = 1*K*dx    # aP
             rhs[n] = bc['South'][1]*K*dx
 
+    if bc['South'][0] == 'Neumann' and bc['South'][1] != 0:
+        for n in indices['south_bound']:
+            aN = -K*dx
+            J[n,indices['north_nb'][n]] = aN
+            sum_nb[n] = aN
+            J[n,n] = -aN
+            rhs[n] = bc['South'][1]*dx**2
+
 
     # north side (j=N[1]-1)
     if bc['North'][0] == 'Dirichlet':
         for n in indices['north_bound']:
             J[n,n] = 1*K*dx     # aP
             rhs[n] = bc['North'][1]*K*dx
+
+    if bc['North'][0] == 'Neumann' and bc['North'][1] != 0:
+        for n in indices['north_bound']:
+            aS = -K*dx
+            J[n,indices['south_nb'][n]] = aS
+            sum_nb[n] = aS
+            J[n,n] = -aS
+            rhs[n] = bc['North'][1]*dx**2
 
 
     # bottom side (k=0)
@@ -431,6 +489,15 @@ def boundaries_individual(
             J[n,n] = 1*K*dx   # aP
             rhs[n] = bc['Bottom'][1]*sf*K*dx
 
+    if bc['Bottom'][0] == 'Neumann' and bc['Bottom'][1] != 0:
+        for n in indices['bottom_bound']:
+            _,j,_ = indices['all_points'][n]
+            sf = scaling_factor**(np.sum(j>=j_seg)-1) if isMi else 1
+            aT = -K*dx
+            J[n,indices['top_nb'][n]] = aT
+            sum_nb[n] = aT
+            J[n,n] = -aT
+            rhs[n] = bc['Bottom'][1]*sf*dx**2
 
     # top side (k=N[2]-1)
     if bc['Top'][0] == 'Dirichlet':
@@ -439,9 +506,18 @@ def boundaries_individual(
             sf = scaling_factor**(np.sum(j>=j_seg)-1) if isMi else 1
             J[n,n] = 1*K*dx  # aP
             rhs[n] = bc['Top'][1]*sf*K*dx
+    
+    if bc['Top'][0] == 'Neumann' and bc['Top'][1] != 0:
+        for n in indices['top_bound']:
+            _,j,_ = indices['all_points'][n]
+            sf = scaling_factor**(np.sum(j>=j_seg)-1) if isMi else 1
+            aB = -K*dx
+            J[n,indices['bottom_nb'][n]] = aB
+            sum_nb[n] = aB
+            J[n,n] = -aB
+            rhs[n] = bc['Top'][1]*sf*dx**2
 
-
-    return J, rhs
+    return J, rhs, sum_nb
 
 def interior_individual_obsolete(
         J, 
@@ -504,13 +580,14 @@ def interior_individual(
         ds, 
         dx, 
         bc, 
+        sum_nb,
         isMi, 
         M_ins=None, 
         scaling_factor=None,
         ):
     import numpy as np
     L = len(indices['all_points'])
-    sum_nb = np.zeros(shape = L, dtype = float) # sigma a_nb vector
+    # sum_nb = np.zeros(shape = L, dtype = float) # sigma a_nb vector
     i_max = np.max(indices['all_points'][:,0])
     j_max = np.max(indices['all_points'][:,1])
     k_max = np.max(indices['all_points'][:,2])
@@ -518,21 +595,21 @@ def interior_individual(
     for n in range(len(indices['all_points'])):
         i,j,k = indices['all_points'][n]
 
-        # skip Dirichlet boundary points
-        if bc['West'][0]   == 'Dirichlet' and i==0:        continue
-        if bc['East'][0]   == 'Dirichlet' and i==i_max:    continue
-        if bc['South'][0]  == 'Dirichlet' and j==0:        continue
-        if bc['North'][0]  == 'Dirichlet' and j==j_max:    continue
-        if bc['Bottom'][0] == 'Dirichlet' and k==0:        continue
-        if bc['Top'][0]    == 'Dirichlet' and k==k_max:    continue
+        # skip Dirichlet boundary points and non-zero Neumann boundary points that lie on the boundaries
+        if not(bc['West'][0]   == 'Neumann' and bc['West'][1] == 0)    and i==0:        continue
+        if not(bc['East'][0]   == 'Neumann' and bc['East'][1] == 0)    and i==i_max:    continue
+        if not(bc['South'][0]  == 'Neumann' and bc['South'][1] == 0)   and j==0:        continue
+        if not(bc['North'][0]  == 'Neumann' and bc['North'][1] == 0)   and j==j_max:    continue
+        if not(bc['Bottom'][0] == 'Neumann' and bc['Bottom'][1] == 0)  and k==0:        continue
+        if not(bc['Top'][0]    == 'Neumann' and bc['Top'][1] == 0)     and k==k_max:    continue
 
         # assign a_nb values for all points (including Neumann boundary points)
-        aW = -K*ds[i-1,j,k]*dx if i!=0     else 0  
-        aE = -K*ds[i+1,j,k]*dx if i!=i_max else 0    
-        aS = -K*ds[i,j-1,k]*dx if j!=0     else 0 
-        aN = -K*ds[i,j+1,k]*dx if j!=j_max else 0    
-        aB = -K*ds[i,j,k-1]*dx if k!=0     else 0 
-        aT = -K*ds[i,j,k+1]*dx if k!=k_max else 0    
+        aW = -K*ds[i-1,j,k]*dx if i!=0     else 0
+        aE = -K*ds[i+1,j,k]*dx if i!=i_max else 0
+        aS = -K*ds[i,j-1,k]*dx if j!=0     else 0
+        aN = -K*ds[i,j+1,k]*dx if j!=j_max else 0
+        aB = -K*ds[i,j,k-1]*dx if k!=0     else 0
+        aT = -K*ds[i,j,k+1]*dx if k!=k_max else 0
 
         if i!=0     and ds[i-1,j,k]: J[n,indices['west_nb'][n]]   = aW
         if i!=i_max and ds[i+1,j,k]: J[n,indices['east_nb'][n]]   = aE
