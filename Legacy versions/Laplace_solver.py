@@ -136,7 +136,7 @@ ic, delx=1, iters=1000, orf=1.0):
         phi = orf*phi_updated + (1-orf)*phi
 
     # removing the phi points outside the domain for visualization purposes
-    phi[domain==0] = np.nan
+    phi[domain==False] = np.nan
     
     return phi, err
 

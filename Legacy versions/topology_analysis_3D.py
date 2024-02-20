@@ -5,23 +5,20 @@ if __name__ == '__main__':
     inputs = {
         "microstructure": 
         {
-            "dx": 40e-09,
-            "average_diameter": 0.4e-6,
+            "dx": 50e-09,
+            "average_diameter": 500e-9,
             "volume_fractions": {
-                "pores": 0.33,
-                "Ni": 0.33,
-                "YSZ": 0.34
+                "pores": 0.4,
+                "Ni": 0.3,
+                "YSZ": 0.3
             },
+            "type": "plurigaussian",
             "length": {
-                "X": 5e-6,
-                "Y": 5e-6,
-                "Z": 5e-6
-            },
-            "lattice_geometry": {
-                "flag": False,
+                "X": 3e-6,
+                "Y": 3e-6,
+                "Z": 3e-6
             },
             "plurigaussian": {
-                "flag": True,
                 "gradient_factor": 1,
                 "seed": [50,40],
                 "reduced_geometry": {
@@ -29,6 +26,8 @@ if __name__ == '__main__':
                     "Lx_extended": 10e-6
                 }
             },
+            "roughness_flag": False,
+            "scale_factor": 1,
             "infiltration_loading": 0.00
         }}
     
@@ -46,12 +45,12 @@ if __name__ == '__main__':
 
     # triple phase boundary analysis
     dx = inputs['microstructure']['dx']
-    TPBs, TPB_density, vertices, lines = tpl.measure_TPB(domain, dx)
+    TPB_mask, TPB_density, lines, TPB_dist_x = tpl.measure_TPB(domain, dx)
     TPB_density = TPB_density / 1e12      # [μm^-2]
 
     if show_TPB:
         import pyvista as pv
-        TPB_mesh = pv.PolyData(vertices, lines=lines)
+        TPB_mesh = pv.PolyData(tpl.create_vertices_in_uniform_grid(domain.shape()), lines=lines)
         from modules.postprocess import visualize_mesh as vm
         vm([domain], [(2,3)], clip_widget=False, TPB_mesh=TPB_mesh)
 
