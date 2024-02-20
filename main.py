@@ -1,5 +1,93 @@
-# if __name__ == '__main__':
-def solve_individual_systems(id):
+#%%
+def solve_entire_domain(ID):
+    # import modules
+    if True:
+        import config
+        config.ID = ID
+        config.simulation_type = 'entire'
+        from modules.topology import create_microstructure_entire_cell as CREATE
+        from modules.topology import topological_operations_entire_cell as TOPOLOGY
+        from modules.preprocess import sourcefunc_calc_entire_cell as SOURCE_TERMS
+        from modules.preprocess import get_indices_entire_cell as INDICES
+        from modules.preprocess import create_SOLE_individual_entire_cell as MATRIX
+        from modules.preprocess import initilize_field_variables_individual_entire_cell as INIT
+        from modules.solve import Newton_loop_individual_entire_cell as SOLVE
+        from modules.postprocess import postprocessing as POST
+
+    separated_domains, voxels = CREATE(
+        display = True,
+        save_domains = False,
+        )
+
+    separated_domains, TPB_dict = TOPOLOGY(
+        separated_domains,
+        show_TPB = False,
+        )
+
+    field_functions, bc_dict = SOURCE_TERMS(
+        TPB_dict,
+    )
+
+    masks_dict, indices = INDICES(
+        separated_domains, 
+        TPB_dict,
+        )
+
+    J, rhs, sum_nb, K, K_array_ion = MATRIX(
+        bc_dict, 
+        indices, 
+        masks_dict,
+        voxels,
+        )
+    
+    phi, residuals = INIT(
+        masks_dict, 
+        indices, 
+        bc_dict,
+        voxels,
+        )
+    
+    phi, residuals = SOLVE(
+        J, 
+        rhs, 
+        phi, 
+        indices, 
+        field_functions, 
+        masks_dict, 
+        sum_nb, 
+        residuals,
+        )
+
+    POST(
+        phi,
+        masks_dict,
+        indices,
+        field_functions,
+        TPB_dict,
+        K,
+        K_array_ion,
+        plots = {
+            'rhoH2_1D':     False,
+            'Vel_1D':       False,
+            'Vio_1D':       True,
+            'rhoO2_1D':     False,
+            'IV_1D':        False,      # volumetric charge transfer rate [A/m3]
+            'Ia_1D':        False,      # the older implementation of current density (not used anymore)
+            'flux_1D':      True,       # the newer implementation of current density
+            'eta_act_1D':   False,
+            'eta_con_1D':   False,
+
+            'rhoH2_3D':     False,
+            'Vel_3D':       False,
+            'Vio_3D':       False,
+            'rhoO2_3D':     False,
+            'I_3D':         False,
+            'eta_act_3D':   True,
+            'eta_con_3D':   True,
+            },
+    )
+
+def solve_anode(id):
     """
     This function does the following:
     1. Reads the input file
@@ -13,14 +101,15 @@ def solve_individual_systems(id):
     10. Visualizes the results
     11. returns the current density
     """
-    import time
-    import json
-    # from modules.file_options import file_options as fo
-    from modules import topology as tpl
-    from modules import file_options as fop
-    from modules import preprocess as prep
-    from modules import postprocess as post
-    from modules import solve as slv
+    if True:
+        import time
+        import json
+        # from modules.file_options import file_options as fo
+        from modules import topology as tpl
+        from modules import file_options as fop
+        from modules import preprocess as prep
+        from modules import postprocess as post
+        from modules import solve as slv
 
     start = time.time()
     id_str = str(id).zfill(3)
@@ -231,7 +320,7 @@ def solve_individual_systems(id):
         determine_gradients = True,
         )
         
-    _ = post.visualize_3D_matrix(
+    _ = post.postprocessing(
         inputs, 
         dense_m, 
         TPB_dict,
