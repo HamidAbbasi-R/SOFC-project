@@ -7,6 +7,6 @@ Input files (anode)/
 .vscode/launch.json
 outputs/
 test.py
-# plot_graphs.ipynb
-microstructure overpotential.xlsx
+*.png
 *.svg
+*.xlsx
