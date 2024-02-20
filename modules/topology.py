@@ -1,4 +1,14 @@
+# if __name__ == '__main__':
 import numpy as np
+import json
+try:
+    from config import ID
+    from config import simulation_type 
+    input_str = f'input files/inputs_{simulation_type}_' + str(ID).zfill(3) + '.json'
+    inputs = json.load(open(input_str))
+except: 
+    pass
+
 def create_microstructure_plurigaussian(
         voxels, 
         vol_frac, 
@@ -9,7 +19,8 @@ def create_microstructure_plurigaussian(
         gradient_factor = 0,
         periodic = True, 
         display = False, 
-        histogram = 'none'):
+        histogram = 'none',
+        ):
     """
     This function creates a periodic three phase 2D phase matrix with the given parameters.
     inputs:
@@ -209,7 +220,10 @@ def create_microstructure_plurigaussian(
         fig.show()
     return phase_mat
 
-def measure_TPB(domain, dx):
+def measure_TPB(
+        domain, 
+        dx,
+        ):
     """
     this function is used to measure the triple phase boundary (TPB). it is written in 
     vectorized form. so the runtime is extremely faster than non-vectorized version.
@@ -474,11 +488,15 @@ def measure_TPB_notvec(phase_mat):
     
     return TPBs, TPB_density, vertices, lines
 
-def percolation_analysis(phase_mat):
+def percolation_analysis(phase_mat, MIEC=False):
     from scipy import ndimage as ndi
     # only the pores (phase_mat==1) must be true for percolation analysis
+    if MIEC: 
+        mask = np.logical_or(phase_mat==1, phase_mat==3)
+    else:
+        mask = phase_mat==1
     phase_1 = np.zeros(shape=phase_mat.shape, dtype=bool)
-    phase_1[phase_mat==1] = True
+    phase_1[mask] = True
     lw1, num1 = ndi.label(phase_1)
     
     phase_2 = np.zeros(shape=phase_mat.shape, dtype=bool)
@@ -560,7 +578,12 @@ def shuffle_labels(labeled_mat):
     shuffled_mat[shuffled_mat==0] = np.nan
     return shuffled_mat
 
-def image_segmentation(phase_mat, dx, sigma=5 ,display=False):
+def image_segmentation(
+        phase_mat, 
+        dx, 
+        sigma=5 ,
+        display=False,
+        ):
     """ 
     Segmentation of the phase matrix.
     Inputs:
@@ -654,7 +677,7 @@ def remove_edges(phi):
 
     return phi
     
-def create_microstructure(inputs, display=False):
+def create_microstructure(display=False):
     print("Generating microstructure...", end='')
 
     flag_reduced = inputs['microstructure']['plurigaussian']['reduced_geometry']['flag']
@@ -757,7 +780,11 @@ def create_microstructure(inputs, display=False):
     print('Done!')
     return domain, domain_org
 
-def topological_operations(inputs, domain_old_list, show_TPB=False, show_TPB_variations=False):
+def topological_operations(
+        domain_old_list, 
+        show_TPB=False, 
+        show_TPB_variations=False,
+        ):
     """
     domain topological operations
     """
@@ -790,10 +817,10 @@ def topological_operations(inputs, domain_old_list, show_TPB=False, show_TPB_var
         percolation_percentage_scaled =[None] * 3
         for i in range(3):
             percolation_percentage_scaled[i] = np.sum(domain_scaled==i+1) / np.sum(domain_old_scaled==i+1)
-    
+
     # measure covariance
     # cov = measure_covariance(domain, phase=1)
-    
+
     # measure the triple phase boundary and create a mask for source term
     dx = inputs['microstructure']['dx']
     TPB_mask, TPB_density, lines, TPB_dist_x = measure_TPB(domain, dx)
@@ -824,14 +851,25 @@ def topological_operations(inputs, domain_old_list, show_TPB=False, show_TPB_var
     # convert float to integer
     # domain = domain.astype(int)
     # lines = lines.astype(int)
-    
+        
+    # measure the volume fraction of each phase on TPB mask
+    vf_TPB = [None] * 3
+    for i in range(3):
+        vf_TPB[i] = np.sum(domain[TPB_mask]==i+1) / np.sum(TPB_mask)
+
+    # measure the ratio of TPB elements divided by 4 (the number of elements in a (2,2) neighborhood) to 
+    # the length of the TPB measured in lines between voxels
+    ratio_TPB = (len(lines[0])/3) / (np.sum(TPB_mask)/4)
+
     print("Done!")
 
     TPB_dict = {
         'TPB_mask': TPB_mask,
         'TPB_density': TPB_density,
         'lines': lines,
-        'TPB_dist_x': TPB_dist_x
+        'TPB_dist_x': TPB_dist_x,
+        'vf_TPB': vf_TPB,
+        'ratio_TPB': ratio_TPB,
     }
 
     if show_TPB:
@@ -876,60 +914,168 @@ def topological_operations(inputs, domain_old_list, show_TPB=False, show_TPB_var
             )
 
     # print percolation percentage and TPB density with three significant digits
-    print(f'TPB density: \n{TPB_density/1e12:.3f}')
-    print(f'Percolation percentage:\n{percolation_percentage[0]:.3f}, {percolation_percentage[1]:.3f}, {percolation_percentage[2]:.3f}')
+    # print(f'TPB density: \n{TPB_density/1e12:.3f}')
+    # print(f'Percolation percentage:\n{percolation_percentage[0]:.3f}, {percolation_percentage[1]:.3f}, {percolation_percentage[2]:.3f}')
     
     # tortuosity_calculator(domain)
     return domain, TPB_dict
 
 # specific functions for entire cell microstructure
-def create_microstructure_entire_cell(inputs):
+def create_microstructure_entire_cell(
+        display=False, 
+        save_domains = False,
+        ):
+        
+    print("Generating microstructure...", end='')
+
+    dx = inputs['microstructure']['dx']
     
-    domain_a = create_microstructure_plurigaussian(
-        voxels = [inputs['Nx_a'],inputs['Ny'],inputs['Nz']],
-        vol_frac = [inputs['vf_pores_a'],inputs['vf_Ni_a'],inputs['vf_YSZ_a']],
-        sigma = inputs['sig_gen_a'],
-        seed = inputs['seed'],
-        display = False,
-        )
+    d_ave_a = inputs['microstructure']['anode']['average_diameter']
+    d_ave_c = inputs['microstructure']['cathode']['average_diameter']
+    d_ave = [d_ave_a, d_ave_c]
     
-    domain_c = create_microstructure_plurigaussian(
-        voxels = [inputs['Nx_c'],inputs['Ny'],inputs['Nz']],
-        vol_frac = [inputs['vf_pores_c'],inputs['vf_LSM_c'],inputs['vf_YSZ_c']],
-        sigma = inputs['sig_gen_c'],
-        seed = inputs['seed'],
-        display = False,
-        )
-    domain_c[domain_c==1] = 4   # pores = 4
-    domain_c[domain_c==2] = 5   # LSM = 5
+    voxels_a = [
+        int(inputs['microstructure']['anode']['length']['X']/dx), 
+        int(inputs['microstructure']['anode']['length']['Y']/dx),
+        int(inputs['microstructure']['anode']['length']['Z']/dx)]
+    voxels_c = [
+        int(inputs['microstructure']['cathode']['length']['X']/dx), 
+        voxels_a[1],
+        voxels_a[2]]
+    voxels_e = [
+        int(inputs['microstructure']['length_electrolyte_X']/dx),
+        voxels_a[1],
+        voxels_a[2]]
+    voxels = [voxels_a, voxels_c, voxels_e]
+
+    vol_frac_a = [
+        inputs['microstructure']['anode']['volume_fractions']['pores'],
+        inputs['microstructure']['anode']['volume_fractions']['Ni'],
+        inputs['microstructure']['anode']['volume_fractions']['YSZ']]
+    vol_frac_c = [   
+        inputs['microstructure']['cathode']['volume_fractions']['pores'],
+        inputs['microstructure']['cathode']['volume_fractions']['LSM'],
+        inputs['microstructure']['cathode']['volume_fractions']['YSZ']]
+    vol_frac = [vol_frac_a, vol_frac_c]
     
-    domain_e = np.zeros(shape = (inputs['Nx_e'], inputs['Ny'], inputs['Nz']), dtype = int)+3
+    infiltration_loading_a = inputs['microstructure']['anode']['infiltration_loading']
+    infiltration_loading_c = inputs['microstructure']['cathode']['infiltration_loading']
+    infiltration_loading = [infiltration_loading_a, infiltration_loading_c]
+
+    # create the entire domain
+    domain = [None, None]
+    for i,component in enumerate(['anode', 'cathode']):
+
+        if inputs['microstructure'][component]['type']=='lattice':
+            domain[i], _ = create_microstructure_lattice(
+                vol_frac[i], 
+                dx, 
+                voxels[i], 
+                d_ave[i],
+                offset=True,
+                smallest_lattice=inputs['microstructure'][component]['lattice_geometry']['smallest_lattice'])
+        
+        elif inputs['microstructure'][component]['type']=='plurigaussian':
+            seed = inputs['microstructure'][component]['plurigaussian']['seed']
+            gradient_factor = inputs['microstructure'][component]['plurigaussian']['gradient_factor']
+
+            domain[i] = create_microstructure_plurigaussian(
+                voxels = voxels[i],
+                vol_frac = vol_frac[i],
+                d_ave = d_ave[i],
+                dx = dx,
+                seed = seed,
+                gradient_factor = gradient_factor,
+                )
+        
+        elif inputs['microstructure'][component]['type']=='fibrous':
+            domain[i] = create_fibrous_bed(
+                voxels = voxels[i],
+                radius = int(d_ave[i]/2/dx), 
+                fibre_length = int(inputs['microstructure'][component]['fibrous_bed']['fibre_length']/dx), 
+                target_porosity = vol_frac[i][0],
+                freq = inputs['microstructure'][component]['fibrous_bed']['frequency'], 
+                overlap = inputs['microstructure'][component]['fibrous_bed']['overlap'], 
+                rotation_max = inputs['microstructure'][component]['fibrous_bed']['rotation_max'],
+                bend_max = inputs['microstructure'][component]['fibrous_bed']['bend_max'],
+                )
+
+        domain[i] = infiltration(domain[i], infiltration_loading[i])
+
+        if inputs['microstructure'][component]['roughness']['flag']:
+            d_rough_pixel = int(np.round(inputs['microstructure'][component]['roughness']['diameter'] / dx))
+            iters = inputs['microstructure'][component]['roughness']['iters']
+            domain[i] = add_roughness_all_phases(domain[i], iteration=iters, d_rough=d_rough_pixel)
+
+    domain[1][domain[1]==1] = 4   # pores = 4
+    domain[1][domain[1]==2] = 5   # LSM = 5
     
+    domain_e = np.zeros(shape = voxels[2], dtype = int)+3
+    separated_domains = [domain[0], domain_e, domain[1]]
+
+    if display:
+        domain = np.concatenate((domain[0], domain_e, domain[1]), axis=0)
+        from modules.postprocess import visualize_mesh
+        visualize_mesh(
+            [domain],
+            [()],
+            )
+
+    if save_domains:
+        from scipy.io import savemat
+        savemat('Binary files/domain_anode.mat', {'domain_anode': domain[0]})
+        savemat('Binary files/domain_cathode.mat', {'domain_cathode': domain[1]})
+
+    print('Done!')
+    return separated_domains, voxels
+
+def topological_operations_entire_cell(
+        separated_domains,
+        show_TPB=False,
+        ):
+    
+    domain_a = separated_domains[0]
+    domain_e = separated_domains[1]
+    domain_c = separated_domains[2]
+
+    domain_a, TPB_dict_a = topological_operations([domain_a, domain_e])
+    domain_c, TPB_dict_c = topological_operations([domain_c-2, domain_c-2])   # normalize between 1 and 3
+
+    # TPB_dict_c['vertices'][:,0] += inputs['Nx_a'] + inputs['Nx_e']
+    domain_c += 2
     domain = np.concatenate((domain_a, domain_e, domain_c), axis=0)
-
-    return domain
-
-def topological_operations_entire_cell(inputs, domain):
-    import pyvista as pv
-
-    domain_a = domain[:inputs['Nx_a'],:,:]
-    domain_c = domain[-inputs['Nx_c']:,:,:]
-    domain_e = domain[inputs['Nx_a']:-inputs['Nx_c'],:,:]
-
-    domain_a, TPB_dict_a = topological_operations(inputs, domain_a)
-    domain_c, TPB_dict_c = topological_operations(inputs, domain_c-2)   # normalize between 1 and 3
-    domain_c += 2   # re-normalize between 3 and 5
-    TPB_dict_c['vertices'][:,0] += inputs['Nx_a'] + inputs['Nx_e']
-    domain = np.concatenate((domain_a, domain_e, domain_c), axis=0)
+    separated_domains = [domain_a, domain_e, domain_c]
     TPB_dict = {"anode": TPB_dict_a, "cathode": TPB_dict_c}
 
-    if inputs['display_mesh']:
-        import modules.postprocess as pp
-        pp.visualize_mesh([domain],[()])
+    if show_TPB:
+        from modules.topology import create_vertices_in_uniform_grid as cvug
+        import pyvista as pv
+        TPB_mesh_a = pv.PolyData(
+            cvug(domain_a.shape), 
+            lines=TPB_dict_a['lines'],
+            )
         
-    return domain, TPB_dict
+        vertices_c = cvug(domain_c.shape)
+        vertices_c[:,0] += domain_a.shape[0] + domain_e.shape[0]
+        TPB_mesh_c = pv.PolyData(
+            vertices_c, 
+            lines=TPB_dict_c['lines'],
+            )
+        
+        from modules.postprocess import visualize_mesh
+        visualize_mesh(
+            [domain],
+            [(3,3)],        # 1: pores-anode, 2: Ni, 3: YSZ, 4: pores-cathode, 5: LSM
+            TPB_mesh= [[TPB_mesh_a, TPB_mesh_c]],
+            entire_domain=[True],
+            )
 
-def create_ideal_microstructure_spheres(voxels, TPB_radius):
+    return separated_domains, TPB_dict 
+
+def create_ideal_microstructure_spheres(
+        voxels, 
+        TPB_radius,
+        ):
     # This function creates an idealized microstructure with two spheres in one
     # third and two thirds of the domain. The TPB length can then be calculated 
     # analytically. This is useful for testing the TPB length calculation.
@@ -963,7 +1109,7 @@ def create_ideal_microstructure_spheres(voxels, TPB_radius):
 
     return TPB_analytical, TPB_measured
 
-def create_ideal_microstructre_straight_bars(inputs, display=False):
+def create_ideal_microstructre_straight_bars(display=False):
     Nx = inputs['microstructure']['Nx']
     Ny = inputs['microstructure']['Ny']
     Nz = inputs['microstructure']['Nz']
@@ -1081,7 +1227,10 @@ def single_random_walk(domain, start, directions, steps):
     
     return distance
 
-def segment(phase_mat, sigma):
+def segment(
+        phase_mat, 
+        sigma,
+        ):
     from scipy import ndimage as ndi
     from scipy.ndimage import gaussian_filter as gaussian
     from skimage.segmentation import watershed
@@ -1103,7 +1252,10 @@ def segment(phase_mat, sigma):
     
     return labels, volumes, centroids, dist_mat
 
-def infiltration(domain, loading):
+def infiltration(
+        domain, 
+        loading,
+        ):
     if loading == 0: return domain
 
     import random
@@ -1313,7 +1465,10 @@ def PDF_analysis(scale, probability_value):
     fig.show()
     return root
 
-def downscale_domain(domain, scale=2):
+def downscale_domain(
+        domain, 
+        scale=2,
+        ):
     # scale=2 means that (2,2,2) voxels are converted to (1,1,1) voxel
     # scale can only be 1, 2, 4, 8, 16, ...
     if scale == 1:
@@ -1372,7 +1527,10 @@ def downscale_domain(domain, scale=2):
 
     return domain
 
-def upscale_domain(domain, scale=2):
+def upscale_domain(
+        domain, 
+        scale=2,
+        ):
     """
     This function does not upscale the image resolution of the domain.
     Instead it only makes the computational cells smaller. It does not affect the 
@@ -1405,9 +1563,10 @@ def upscale_domain(domain, scale=2):
 
     return domain
 
-
-
-def measure_covariance(domain,phase=1):
+def measure_covariance(
+        domain,
+        phase=1,
+        ):
     import plotly.graph_objects as go
 
     domain = domain==phase
@@ -1430,7 +1589,10 @@ def measure_covariance(domain,phase=1):
 
     return cov
 
-def create_fibre(radius, length):
+def create_fibre(
+        radius, 
+        length,
+        ):
     fibre = np.zeros(shape=(length,2*radius,2*radius), dtype=int)
     # create i,j,k indices
     i = np.arange(fibre.shape[0])
@@ -1445,7 +1607,14 @@ def create_fibre(radius, length):
 
     return fibre
 
-def create_twisted_fibre(radius, length, amp=1, freq=1, phase=0, overlap=1):
+def create_twisted_fibre(
+        radius, 
+        length, 
+        amp=1, 
+        freq=1, 
+        phase=0, 
+        overlap=1,
+        ):
 
     # create the rod
     # rod radius is increased by overlap
@@ -1472,7 +1641,14 @@ def create_twisted_fibre(radius, length, amp=1, freq=1, phase=0, overlap=1):
 
     return fibre
 
-def create_twisted_multifibre(radius, fibre_length, amp=1, freq=1, overlap=1, n_fibres=2):
+def create_twisted_multifibre(
+        radius, 
+        fibre_length, 
+        amp=1, 
+        freq=1, 
+        overlap=1, 
+        n_fibres=2,
+        ):
     # if amp>1 then two twisted fibres are not touching each other.
 
     fibres = [None] * n_fibres
@@ -1490,7 +1666,10 @@ def create_twisted_multifibre(radius, fibre_length, amp=1, freq=1, overlap=1, n_
 
     return multi_fibre
 
-def rotate_3D_image(image, rotation=(0,0,0)):
+def rotate_3D_image(
+        image, 
+        rotation=(0,0,0),
+        ):
     from scipy.ndimage import rotate
 
     image = rotate(image, rotation[0], axes=(1,2), order=0, prefilter=True)
@@ -1509,7 +1688,8 @@ def create_fibrous_bed(
         freq = 1, 
         overlap = 1, 
         rotation_max = (0,0,0),
-        bend_max = 1.5):
+        bend_max = 1.5,
+        ):
 
     # initialize the bed
     bed = np.zeros(shape=voxels, dtype=int)
@@ -1575,7 +1755,13 @@ def create_fibrous_bed(
     bed += 1
     return bed
 
-def put_fibre_in_bed(fibre, f_mask, bed, start_eff, end_eff):
+def put_fibre_in_bed(
+        fibre, 
+        f_mask, 
+        bed, 
+        start_eff, 
+        end_eff,
+        ):
     cof = correct_overlapping_fibres
     # These are effective start and end points of the fibre
     i1, j1, k1 = start_eff
@@ -1633,7 +1819,11 @@ def put_fibre_in_bed(fibre, f_mask, bed, start_eff, end_eff):
 
     return bed
 
-def bend_fibre(fibre, bending_factor, flip=False):
+def bend_fibre(
+        fibre, 
+        bending_factor, 
+        flip=False,
+        ):
     
     bf = int(bending_factor*fibre.shape[1])
     # pad the fibre domain
@@ -1652,7 +1842,11 @@ def bend_fibre(fibre, bending_factor, flip=False):
         
     return fibre
 
-def add_roughness(domain_smooth, d_rough, labels=[1,2]):
+def add_roughness(
+        domain_smooth, 
+        d_rough, 
+        labels=[1,2],
+        ):
     from scipy.ndimage.morphology import binary_dilation
 
     if d_rough==0:
@@ -1707,7 +1901,13 @@ def add_roughness(domain_smooth, d_rough, labels=[1,2]):
 
     return final_rough
 
-def add_roughness_all_phases(domain_smooth, labels=None, iteration=1, d_rough=6):
+def add_roughness_all_phases(
+        domain_smooth, 
+        labels=None, 
+        iteration=1, 
+        d_rough=6,
+        ):
+    
     if labels is None:
         labels = [[1,2],[1,3],[2,3]] if len(np.unique(domain_smooth))==3 else [[1,2]]
     else:
@@ -1729,7 +1929,12 @@ def add_roughness_all_phases(domain_smooth, labels=None, iteration=1, d_rough=6)
     
     return domain_rough
 
-def measure_interface(domain, labels=None, output='binary'):
+def measure_interface(
+        domain, 
+        labels=None, 
+        output='binary',
+        ):
+    
     from scipy.ndimage.morphology import binary_dilation
     
     if labels is None:
@@ -1752,7 +1957,11 @@ def measure_interface(domain, labels=None, output='binary'):
 
     return interface
 
-def create_circle(diameter, output='total'):
+def create_circle(
+        diameter, 
+        output='total',
+        ):
+    
     I,J = np.indices((diameter,diameter))
     circle = np.zeros((diameter,diameter))+1
     circle[(I-diameter/2)**2+(J-diameter/2)**2 <= (diameter/2)**2] = 2
@@ -1770,7 +1979,11 @@ def create_circle(diameter, output='total'):
     elif output == 'quarter':
         return circle[N//2:,N//2:]
     
-def correct_overlapping_fibres(location_in_bed, new_fibre):
+def correct_overlapping_fibres(
+        location_in_bed, 
+        new_fibre,
+        ):
+    
     location_in_bed += new_fibre
     location_in_bed[location_in_bed==4] = 2
     location_in_bed[location_in_bed==3] = new_fibre[location_in_bed==3]
@@ -1779,6 +1992,7 @@ def correct_overlapping_fibres(location_in_bed, new_fibre):
     return location_in_bed
 
 def create_vertices_in_uniform_grid(N):
+
     x = np.arange(N[0]+1)
     y = np.arange(N[1]+1)
     z = np.arange(N[2]+1)
@@ -1788,7 +2002,11 @@ def create_vertices_in_uniform_grid(N):
     vertices = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
     return vertices
 
-def subgrid_transformation(TPB_mask, TPB_mask_scaled):
+def subgrid_transformation(
+        TPB_mask, 
+        TPB_mask_scaled,
+        ):
+    
     N_orig = TPB_mask.shape
     N_scaled = TPB_mask_scaled.shape
 
