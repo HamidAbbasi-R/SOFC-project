@@ -1,9 +1,12 @@
 **/__pycache__
 **/__pycache__/
 **/Binary files
-input files/
-input files [old]/
+Input files/
+Input files old/
+Input files [anode only]/
 .vscode/launch.json
+outputs/
 test.py
-plot_graphs.ipynb
+# plot_graphs.ipynb
 microstructure overpotential.xlsx
+*.svg
