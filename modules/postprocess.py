@@ -1,5 +1,15 @@
+# if __name__ == '__main__':
 import numpy as np
-def visualize_residuals(inputs, residuals):
+import json
+try:
+    from config import ID
+    from config import simulation_type 
+    input_str = f'input files/inputs_{simulation_type}_' + str(ID).zfill(3) + '.json'
+    inputs = json.load(open(input_str))
+except: 
+    pass
+
+def visualize_residuals(residuals):
     import pandas as pd
     import plotly.express as px
 
@@ -22,8 +32,33 @@ def visualize_residuals(inputs, residuals):
     fig.update_yaxes(exponentformat="e")
     fig.show()
 
-def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
+def postprocessing(
+        phi,
+        masks_dict,
+        indices,
+        field_functions,
+        TPB_dict,
+        K,
+        K_array_ion,
+        plots,
+        ):
     # visualize the solution
+    
+    dense_m = create_dense_matrices(
+        phi,
+        masks_dict,
+        indices,
+        field_functions,
+        TPB_dict,
+        K_array_ion,
+        )
+    
+    ds = masks_dict['ds']
+    N = [ds[i].shape for i in range(len(ds))]
+    Lx_a = N[0][0]
+    Lx_e = N[1][0] - N[0][0] - N[3][0]
+    Lx_c = N[3][0]
+    Lx_tot = Lx_a + Lx_e + Lx_c
 
     img_flag = inputs['output_options']['img_output']
     csv_flag = inputs['output_options']['csv_output']
@@ -32,10 +67,20 @@ def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
 
     if plot3D_flag:
         import pyvista as pv
-        lines = TPB_dict['lines']
+        # lines = TPB_dict['lines']
         pv.set_plot_theme("document")
         from modules.topology import create_vertices_in_uniform_grid as cvug
-        TPB_mesh = pv.PolyData(cvug(dense_m['phi_dense'].shape), lines=lines)
+        # TPB_mesh = pv.PolyData(cvug(dense_m['phi_dense'].shape), lines=lines)
+        TPB_mesh_a = pv.PolyData(
+            cvug(N[0]), 
+            lines=TPB_dict['anode']['lines'],
+            )
+        vertices_c = cvug(N[3])
+        vertices_c[:,0] += Lx_a + Lx_e
+        TPB_mesh_c = pv.PolyData(
+            vertices_c, 
+            lines=TPB_dict['cathode']['lines'],
+            )
     
     dx = inputs['microstructure']['dx']
     mats = []
@@ -43,155 +88,116 @@ def visualize_3D_matrix(inputs, dense_m, TPB_dict, plots):
     log_scale = []
     titles = []
 
-    dense_phi = dense_m['phi_dense']
-    dense_cH2 = dense_m['cH2']
-    dense_Vel = dense_m['Vel']
-    dense_Vio = dense_m['Vio']
-    dense_Ia = dense_m['Ia']
-    dense_eta_act = dense_m['eta_act']
-    dense_eta_con = dense_m['eta_con']
+    # 1D phi plots
+    x = np.arange(Lx_tot)*dx*1e6
+    vars = ['rhoH2', 'Vel', 'Vio', 'rhoO2']
+
+    for var in vars:
+        if plots[f'{var}_1D'] and (plot1D_flag or csv_flag):
+            var_avg,var_max,var_min,var_c_down,var_c_up = [np.zeros(Lx_tot)] * 5
+            for i in range(Lx_tot):
+                a = dense_m[var][i, :, :][~np.isnan(dense_m[var][i, :, :])]
+                var_avg[i] = np.average(a) if a.size>0 else np.nan
+                var_max[i] = np.max(a) if a.size>0 else np.nan
+                var_min[i] = np.min(a) if a.size>0 else np.nan
+                var_c_down[i], var_c_up[i] = mean_confidence_interval(a) if a.size>0 else (np.nan, np.nan)
+            if csv_flag: create_csv_output(x, var_avg, var_min, var_max, var_c_down, var_c_up, f'{var}_{inputs["file_options"]["id"]}')
+            if plot1D_flag: plot_with_continuous_error(x, var_avg, var_c_down, var_c_up, x_title='Distance from anode (µm)', y_title=var, title=f'{var}_{inputs["file_options"]["id"]}', save_img=img_flag)
     
-    N = dense_phi.shape
-
-    x = np.arange(N[0])*dx*1e6
-
-    if plots['cH2_1D'] and (plot1D_flag or csv_flag):
-        cH2_avg = np.zeros(N[0])
-        cH2_max = np.zeros(N[0])
-        cH2_min = np.zeros(N[0])
-        cH2_c_down = np.zeros(N[0])
-        cH2_c_up = np.zeros(N[0])
-        for i in range(N[0]):
-            a = dense_cH2[i, :, :][~np.isnan(dense_cH2[i, :, :])]
-            cH2_avg[i] = np.average(a)
-            cH2_max[i] = np.max(a)
-            cH2_min[i] = np.min(a)
-            cH2_c_down[i], cH2_c_up[i] = mean_confidence_interval(a)
-        if csv_flag: create_csv_output(x, cH2_avg, cH2_min, cH2_max, cH2_c_down, cH2_c_up, f'cH2_{inputs["file_options"]["id"]}')
-        if plot1D_flag: plot_with_continuous_error(x, cH2_avg, cH2_c_down, cH2_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title=f'cH2_{inputs["file_options"]["id"]}', save_img=img_flag)
-    
-    if plots['Vel_1D'] and (plot1D_flag or csv_flag):
-        Vel_avg = np.zeros(N[0])
-        Vel_max = np.zeros(N[0])
-        Vel_min = np.zeros(N[0])
-        Vel_c_down = np.zeros(N[0])
-        Vel_c_up = np.zeros(N[0])
-        for i in range(N[0]):
-            a = dense_Vel[i, :, :][~np.isnan(dense_Vel[i, :, :])]
-            Vel_avg[i] = np.average(a)
-            Vel_max[i] = np.max(a)
-            Vel_min[i] = np.min(a)
-            Vel_c_down[i], Vel_c_up[i] = mean_confidence_interval(a)
-        if csv_flag: create_csv_output(x, Vel_avg, Vel_min, Vel_max, Vel_c_down, Vel_c_up, f'Vel_{inputs["file_options"]["id"]}')
-        if plot1D_flag: plot_with_continuous_error(x, Vel_avg, Vel_c_down, Vel_c_up, x_title='Distance from anode (µm)', y_title='Electron potential (V)', title=f'Vel_{inputs["file_options"]["id"]}', save_img=img_flag)
-
-    if plots['Vio_1D'] and (plot1D_flag or csv_flag):
-        Vio_avg = np.zeros(N[0])
-        Vio_max = np.zeros(N[0])
-        Vio_min = np.zeros(N[0])
-        Vio_c_down = np.zeros(N[0])
-        Vio_c_up = np.zeros(N[0]) 
-        for i in range(N[0]):
-            a = dense_Vio[i, :, :][~np.isnan(dense_Vio[i, :, :])]
-            Vio_avg[i] = np.average(a)
-            Vio_max[i] = np.max(a)
-            Vio_min[i] = np.min(a)
-            Vio_c_down[i], Vio_c_up[i] = mean_confidence_interval(a)
-        if csv_flag: create_csv_output(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, f'Vio_{inputs["file_options"]["id"]}')
-        if plot1D_flag: plot_with_continuous_error(x, Vio_avg, Vio_min, Vio_max, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Ion potential (V)', title=f'Vio_{inputs["file_options"]["id"]}', save_img=img_flag)
-
+    # 1D volumetric charge transfer rate plot [NEW]
     if True:
-        Ia_A_avg = np.zeros(N[0])
+        I_vol = np.zeros(Lx_tot) * np.nan
+        I_vol[1:Lx_a-1] = np.nanmean(dense_m['I'][1:Lx_a-1, ...], axis=(1,2)) # [A/m3]
+        I_vol[Lx_a+Lx_e+1:-1] = np.nanmean(dense_m['I'][Lx_a+Lx_e+1:-1, ...], axis=(1,2)) # [A/m3]
+        if csv_flag: create_csv_output(x, I_vol, title=f'I_vol_{inputs["file_options"]["id"]}')
+        if plot1D_flag and plots['IV_1D']: plot_with_continuous_error(x, I_vol, x_title='Distance from anode (µm)', y_title='Charge transfer rate (A/m3)', title=f'I_vol_{inputs["file_options"]["id"]}', save_img=img_flag)
 
-        j_buch = 0         # area specific current density as defined in eq 21 by Buchaniec et al. 2019 [A/m2]
-        j_prok = 0         # area specific current density as defined in eq 3.31 in Prokop's thesis 2020 [A/m2]
-
-        area = N[1]*N[2]*dx**2 # [m2]
-        for i in range(N[0]):
-            if i == 0 or i == N[0]-1:
-                Ia_A_avg[i] = np.nan
+    # 1D area current density plot [OLD] 
+    # not needed anymore since we have the volumetric charge transfer rate
+    # also, this is not a good way to calculate the area-specific current density
+    # area-specific current density is actually the flux of ion potential through YZ plane
+    if False:
+        area = N[0][1]*N[0][2]*dx**2 # [m2]
+        I_avg = np.zeros(Lx_tot)
+        # j_buch = 0         # area specific current density as defined in eq 21 by Buchaniec et al. 2019 [A/m2]
+        j_a_prok = 0         # area specific current density as defined in eq 3.31 in Prokop's thesis 2020 [A/m2]
+        for i in range(Lx_a):
+            if i == 0 or i == Lx_a-1:
+                I_avg[i] = np.nan
             else:
-                a = dense_Ia[i, :, :][~np.isnan(dense_Ia[i, :, :])]     # [A/m3]
+                a = dense_m['I'][i, ...]     # [A/m3]
+                j_a_prok += np.nansum(a)*dx**3        # [A]
 
-                j_buch = j_buch + (np.sum(a))*dx
-                j_prok = j_prok + (np.sum(a))*dx**3
+        j_c_prok = 0
+        for i in range(Lx_c-1, -1, -1):
+            if i == 0 or i == Lx_c-1:
+                I_avg[i+Lx_a+Lx_e] = np.nan
+            else:
+                a = dense_m['I'][i+Lx_a+Lx_e, ...]
+                j_c_prok += np.nansum(a)*dx**3        # [A]
+                I_avg[i+Lx_a+Lx_e] = j_c_prok/area      # [A/m2]
                 
-                Ia_A_avg[i] = j_prok/area # [A/m2]
+        if csv_flag: create_csv_output(x, I_avg, title=f'I_{inputs["file_options"]["id"]}')
+        if plot1D_flag: plot_with_continuous_error(x, I_avg, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title=f'Ia_A_{inputs["file_options"]["id"]}', save_img=img_flag)
+    
+    # 1D ion flux plot - sigma*dVio/dx*area [A] [NEW]
+    # This value should be devided by the area of electrolyte to get the area-specific current density [A/m2]
+    if False:
+        # fluxion_matrix is [A/m2]
+        fluxion_matrix = np.zeros(N[1])*np.nan
+        fluxion_matrix[:Lx_a,...]           = -K[2] * dense_m['grad_phi'][2][0][:Lx_a, ...]             #* vol_frac_YSZ[:Lx_a]
+        fluxion_matrix[Lx_a:Lx_a+Lx_e,...]  = -K[6] * dense_m['grad_phi'][2][0][Lx_a:Lx_a+Lx_e, ...]    #* vol_frac_YSZ[Lx_a:Lx_a+Lx_e]
+        fluxion_matrix[Lx_a+Lx_e:,...]      = -K[5] * dense_m['grad_phi'][2][0][Lx_a+Lx_e:, ...]        #* vol_frac_YSZ[Lx_a+Lx_e:]
+        # fluxion_matrix[~ds[2]] = np.nan
+        # fluxion_matrix[:Lx_a,...][TPB_dict['anode']['TPB_mask']] = np.nan
+        # fluxion_matrix[Lx_a+Lx_e:,...][TPB_dict['cathode']['TPB_mask']] = np.nan
 
-        if csv_flag: create_csv_output(x, Ia_A_avg, title=f'Ia_A_{inputs["file_options"]["id"]}')
-        if plot1D_flag: plot_with_continuous_error(x, Ia_A_avg, x_title='Distance from anode (µm)', y_title='Area-specific current density (A/m2)', title=f'Ia_A_{inputs["file_options"]["id"]}', save_img=img_flag)
+        dx = inputs['microstructure']['dx']
+        Ia = np.nansum(fluxion_matrix, axis=(1,2)) / (N[0][1]*N[0][2])      # 1D [A/m2]
+            
+        if plots['Ia_1D'] and plot1D_flag: plot_with_continuous_error(x, Ia, x_title='Distance from anode (µm)', y_title='Current density (A/m2)', title=f'Ia_{inputs["file_options"]["id"]}', save_img=img_flag)
+        if csv_flag: create_csv_output(x, Ia, title=f'Ia_{inputs["file_options"]["id"]}')
+
+    # 1D ion flux calculated from matrix of coefficients [A]
+    if True:
+        # flux matrix is [A/m2]
+        flux_W, flux_E = dense_m['flux_W'], dense_m['flux_E']
+
+        # Ia_W & Ia_E are [A/cm2] d
+        Ia_W = np.nansum(flux_W, axis=(1,2)) / (N[0][1]*N[0][2]) / 1e4
+        # Ia_E = np.nansum(flux_E, axis=(1,2)) / (N[0][1]*N[0][2]) / 1e4
+
+        if plots['flux_1D'] and plot1D_flag: 
+            # plot_with_continuous_error(x, Ia_E, x_title='Distance from anode (µm)', y_title='Current density, East (A/cm2)', title=f'flux_E_{inputs["file_options"]["id"]}', save_img=img_flag)
+            plot_with_continuous_error(x, Ia_W, x_title='Distance from anode (µm)', y_title='Current density, West (A/cm2)', title=f'flux_W_{inputs["file_options"]["id"]}', save_img=img_flag)
+        if csv_flag: 
+            # create_csv_output(x, Ia_E, title=f'Ia_E_{inputs["file_options"]["id"]}')
+            create_csv_output(x, Ia_W, title=f'Ia_W_{inputs["file_options"]["id"]}')
+
 
     if inputs['output_options']['show_3D_plots']:
-        if plots['cH2_3D']:
-            mats.append(dense_cH2)
-            thds.append(())
-            titles.append('cH2')
-            log_scale.append(False)
+        vars = ['rhoH2', 'Vel', 'Vio','rhoO2', 'I', 'eta_act', 'eta_con']
+        for var in vars:
+            if plots[f'{var}_3D']:
+                mats.append(dense_m[var])
+                thds.append(())
+                titles.append(var)
+                log_scale.append(True if var=='eta_act' else False)
 
-        if plots['Vel_3D']:
-            mats.append(dense_Vel)
-            thds.append(())
-            titles.append('Vel')
-            log_scale.append(False)
-        
-        if plots['Vio_3D']:
-            mats.append(dense_Vio)
-            thds.append(())
-            titles.append('Vio')
-            log_scale.append(False)
-
-        if plots['Ia_3D']:
-            mats.append(dense_Ia*dx**3)     # show the figure in [A] not [A/m3]
-            thds.append(())
-            titles.append('Ia')
-            log_scale.append(False)         # might be True for better visualization
-
-        if plots['eta_act_3D']:
-            mats.append(dense_eta_act)
-            thds.append(()) 
-            titles.append('e_act')
-            log_scale.append(False)
-
-        if plots['eta_con_3D']:
-            mats.append(dense_eta_con)
-            thds.append(())
-            titles.append('e_con')
-            log_scale.append(False)
-
-        TPB_mats = [TPB_mesh]*len(mats)
-        visualize_mesh(
-            mat = mats,
-            thd = thds,
-            titles = titles,
-            clip_widget = False, 
-            TPB_mesh = TPB_mats,
-            log_scale = log_scale,
-            link_views=True,
-            show_axis=True,
-            )
-    
-    return Ia_A_avg
-
-def create_TPB_field_variable_individual(phi_dense, indices, masks_dict, func):
-    # visualize a function on the TPB
-    N = phi_dense.shape
-    ds = masks_dict['ds']
-
-    TPB_mat = np.zeros(shape = N)
-
-    for p in [0,1,2]:
-        for n in indices[p]['source']:
-            i,j,k = indices[p]['all_points'][n]
-            if close_to_edge(N, i,j,k): continue
-
-            cH2_i = phi_dense[i,j,k] if p==0 else np.average(phi_dense[i-1:i+2,j-1:j+2,k-1:k+2][ds[0][i-1:i+2,j-1:j+2,k-1:k+2]])
-            Vel_i = phi_dense[i,j,k] if p==1 else np.average(phi_dense[i-1:i+2,j-1:j+2,k-1:k+2][ds[1][i-1:i+2,j-1:j+2,k-1:k+2]])
-            Vio_i = phi_dense[i,j,k] if p==2 else np.average(phi_dense[i-1:i+2,j-1:j+2,k-1:k+2][ds[2][i-1:i+2,j-1:j+2,k-1:k+2]])
-
-            TPB_mat[i,j,k] = func(cH2_i, Vel_i, Vio_i)
-    
-    TPB_mat[TPB_mat==0] = np.nan
-    return TPB_mat
+        # TPB_mats = [[TPB_mesh]*len(mats)]
+        TPB_mats = [[TPB_mesh_a, TPB_mesh_c]] * len(mats)
+        if mats != []:
+            visualize_mesh(
+                mat = mats,
+                thd = thds,
+                titles = titles,
+                clip_widget = False, 
+                TPB_mesh = TPB_mats,
+                log_scale = log_scale,
+                link_views=True,
+                show_axis=True,
+                entire_domain=[True]*len(mats),
+                )
 
 def plot_with_continuous_error(x, y, y_min=None, y_max=None, y_c_down=None, y_c_up=None, 
                                x_title='x', y_title='y', title=None, save_img=False, log_type="linear"):
@@ -292,16 +298,6 @@ def mean_confidence_interval(data, confidence=0.95):
     h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
     return m-h, m+h
 
-def create_field_variable_individual(N, phi, indices, func):
-    field_mat = np.zeros(shape = N)
-
-    for n in indices['interior']:
-        i,j,k = indices['all_points'][n]
-        field_mat[i,j,k] = func(phi[i,j,k])
-    
-    field_mat[field_mat==0] = np.nan
-    return field_mat
-
 def save_image(phase_mat):
     
     from tqdm import tqdm
@@ -328,6 +324,7 @@ def visualize_mesh(
         titles=[], 
         clip_widget=False, 
         TPB_mesh=[], 
+        entire_domain=None,
         log_scale=None, 
         animation=None,
         save_graphics=False,
@@ -339,6 +336,8 @@ def visualize_mesh(
         save_vtk=False,
         show_axis=False,
         link_colorbar=False,
+        edge_width=0,
+        opacity=1
         ):
     """
     Visualizes the mesh via PyVista.
@@ -350,14 +349,26 @@ def visualize_mesh(
     import matplotlib.pyplot as plt
     
     pv.set_plot_theme("document")
-    cmap = plt.cm.get_cmap(cmap)
+    # check if colormap is qualitative or not
+    is_qualitative = False
+    if cmap in ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2',
+                'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b',
+                'tab20c']:
+        is_qualitative = True
+    
+    cmap = plt.cm.get_cmap(cmap)     
      
     if thd is None: thd = [()]*len(mat)
+    if entire_domain is None: entire_domain = [False]*len(mat)
 
     if link_colorbar:
         zmin = min([np.nanmin(m) for m in mat])
         zmax = max([np.nanmax(m) for m in mat])
         clim = [zmin, zmax]
+        if is_qualitative:
+            from matplotlib.colors import LinearSegmentedColormap
+            colors = cmap(range(zmax-zmin+1))  # Get the first N unique colors
+            cmap = LinearSegmentedColormap.from_list("", colors)
     else:
         clim = None
     
@@ -409,15 +420,42 @@ def visualize_mesh(
         p.subplot(0, i)
         # mesh.save(f"mesh{i}.vtk")
         if clip_widget:
-            p.add_mesh_clip_plane(mesh, scalar_bar_args={'title': f'Phase{i+1}'}, cmap=cmap, clim=clim)
+            p.add_mesh_clip_plane(
+                mesh,
+                scalar_bar_args=sargs, 
+                cmap=cmap, 
+                # cmap=cmap_mat[i] if is_qualitative else cmap, 
+                clim=clim, 
+                show_edges=False if edge_width==0 else True,
+                line_width=edge_width,
+                normal_rotation = 0.0,
+                normal = (0,1,0),
+                origin = (0,1,0),
+                opacity=opacity,
+                )
         else:
-            p.add_mesh(mesh, scalar_bar_args=sargs, log_scale=scale, cmap=cmap, clim=clim)#, show_edges=True)
+            p.add_mesh(
+                mesh, 
+                scalar_bar_args=sargs, 
+                log_scale=scale, 
+                cmap=cmap, 
+                # cmap=cmap_mat[i] if is_qualitative else cmap, 
+                clim=clim, 
+                show_edges=False if edge_width==0 else True,
+                line_width=edge_width,
+                opacity=opacity,
+                )
             p.add_bounding_box(line_width=1, color='black')
             if bool(titles):
                 p.add_text(titles[i], font_size=20, position='lower_edge')
         if bool(TPB_mesh):
             if save_vtk: TPB_mesh[i].save(f'TPB_mesh{i}.vtk')
-            p.add_mesh(TPB_mesh[i], line_width=10, color='r')
+            if entire_domain[i]:
+                p.add_mesh(TPB_mesh[i][0], line_width=10, color='r')
+                p.add_mesh(TPB_mesh[i][1], line_width=10, color='r')
+            else:
+                p.add_mesh(TPB_mesh[i], line_width=10, color='r')
+
         
         if isometric: p.view_isometric()
         else: 
@@ -466,7 +504,7 @@ def visualize_mesh(
             p.close()
     elif animation is None:
         if save_graphics:
-            scale_factor = 2
+            scale_factor = 1
             p.window_size = [scale_factor*p.window_size[0],scale_factor*p.window_size[1]]
             p.show()
             p.update()
@@ -527,157 +565,295 @@ def visualize_contour(mat, n_levels=5):
     p.show()
     
     return None
+    
+def is_edge(shape, i, j, k):
+    """
+    Checks if a given set of i,j,k indices lie on the edge of a 3D domain.
 
-def close_to_edge(N, i,j,k):
-    if \
-    (i==1 and j==1) or\
-    (i==1 and k==1) or\
-    (j==1 and k==1) or\
-    (i==N[0]-2 and j==1) or\
-    (i==N[0]-2 and k==1) or\
-    (j==N[1]-2 and k==1) or\
-    (i==1 and j==N[1]-2) or\
-    (i==1 and k==N[2]-2) or\
-    (j==1 and k==N[2]-2) or\
-    (i==N[0]-2 and j==N[1]-2) or\
-    (i==N[0]-2 and k==N[2]-2) or\
-    (j==N[1]-2 and k==N[2]-2):
-        return True
+    Args:
+        shape: The shape of the 3D domain as a tuple (i_dim, j_dim, k_dim).
+        i: The i-th index.
+        j: The j-th index.
+        k: The k-th index.
+
+    Returns:
+        True if the indices lie on the edge, False otherwise.
+    """
+    i_dim, j_dim, k_dim = shape
+    edges = {(0, 0), (0, j_dim - 1), (i_dim - 1, 0), (i_dim - 1, j_dim - 1)} | \
+            {(0, k_dim - 1), (i_dim - 1, k_dim - 1), (j_dim - 1, 0), (j_dim - 1, k_dim - 1)}
+    return (i, j) in edges or (i, k) in edges or (j, k) in edges
 
 # specific functions for entire cell
-def visualize_3D_matrix_entire_cell(inputs, phi_dense, masks_dict, TPB_dict, titles, cH2=None, Vel_a=None, Vio=None, cO2=None, Vel_c=None, field_mat=None, TPB_mat=None):
-    # visualize the solution
-    import pyvista as pv
-    import pandas as pd
-    import plotly.express as px
-    pv.set_plot_theme("document")
+# def visualize_3D_matrix_entire_cell(inputs, phi_dense, masks_dict, TPB_dict, titles, rhoH2=None, Vel_a=None, Vio=None, rhoO2=None, Vel_c=None, field_mat=None, TPB_mat=None):
+#     # visualize the solution
+#     import pyvista as pv
+#     import pandas as pd
+#     import plotly.express as px
+#     pv.set_plot_theme("document")
 
-    N = [inputs['Nx_a']+inputs['Nx_e']+inputs['Nx_c'], inputs['Ny'], inputs['Nz']]
-    ds = masks_dict['ds']
-    ds_entire_cell = [None]*5
-    ds_entire_cell[0] = np.concatenate((ds[0], np.zeros((inputs['Nx_e']+inputs['Nx_c'], inputs['Ny'], inputs['Nz']),dtype=bool)), axis=0)
-    ds_entire_cell[1] = np.concatenate((ds[1], np.zeros((inputs['Nx_e']+inputs['Nx_c'], inputs['Ny'], inputs['Nz']),dtype=bool)), axis=0)
-    ds_entire_cell[2] = ds[2]
-    ds_entire_cell[3] = np.concatenate((np.zeros((inputs['Nx_a']+inputs['Nx_e'], inputs['Ny'], inputs['Nz']),dtype=bool),ds[3]),axis=0)
-    ds_entire_cell[4] = np.concatenate((np.zeros((inputs['Nx_a']+inputs['Nx_e'], inputs['Ny'], inputs['Nz']),dtype=bool),ds[4]),axis=0)
-    mats = []
-    thds = []
-    log_scale = []
+#     N = [inputs['Nx_a']+inputs['Nx_e']+inputs['Nx_c'], inputs['Ny'], inputs['Nz']]
+#     ds = masks_dict['ds']
+#     ds_entire_cell = [None]*5
+#     ds_entire_cell[0] = np.concatenate((ds[0], np.zeros((inputs['Nx_e']+inputs['Nx_c'], inputs['Ny'], inputs['Nz']),dtype=bool)), axis=0)
+#     ds_entire_cell[1] = np.concatenate((ds[1], np.zeros((inputs['Nx_e']+inputs['Nx_c'], inputs['Ny'], inputs['Nz']),dtype=bool)), axis=0)
+#     ds_entire_cell[2] = ds[2]
+#     ds_entire_cell[3] = np.concatenate((np.zeros((inputs['Nx_a']+inputs['Nx_e'], inputs['Ny'], inputs['Nz']),dtype=bool),ds[3]),axis=0)
+#     ds_entire_cell[4] = np.concatenate((np.zeros((inputs['Nx_a']+inputs['Nx_e'], inputs['Ny'], inputs['Nz']),dtype=bool),ds[4]),axis=0)
+#     mats = []
+#     thds = []
+#     log_scale = []
     
-    if Vio is not None:
-        sol_Vio = np.copy(phi_dense)
-        sol_Vio[ds_entire_cell[2] == False] = np.nan
-        mats.append(sol_Vio)
-        thds.append(())
-        log_scale.append(False)
+#     if Vio is not None:
+#         sol_Vio = np.copy(phi_dense)
+#         sol_Vio[ds_entire_cell[2] == False] = np.nan
+#         mats.append(sol_Vio)
+#         thds.append(())
+#         log_scale.append(False)
 
-    import pyvista as pv
-    vertices_a = TPB_dict['anode']['vertices']
-    lines_a = TPB_dict['anode']['lines']
+#     import pyvista as pv
+#     vertices_a = TPB_dict['anode']['vertices']
+#     lines_a = TPB_dict['anode']['lines']
 
-    vertices_c = TPB_dict['cathode']['vertices']
-    lines_c = TPB_dict['cathode']['lines']
+#     vertices_c = TPB_dict['cathode']['vertices']
+#     lines_c = TPB_dict['cathode']['lines']
 
-    TPB_mesh_a = pv.PolyData(vertices_a, lines=lines_a)
-    TPB_mesh_c = pv.PolyData(vertices_c, lines=lines_c)
+#     TPB_mesh_a = pv.PolyData(vertices_a, lines=lines_a)
+#     TPB_mesh_c = pv.PolyData(vertices_c, lines=lines_c)
     
     
-    if inputs['show_3D_plots']:
-        visualize_mesh(
-            mat = mats,
-            thd = thds,
-            titles = titles,
-            clip_widget = False, 
-            TPB_mesh = [TPB_mesh_a, TPB_mesh_c],
-            log_scale = log_scale)
+#     if inputs['show_3D_plots']:
+#         visualize_mesh(
+#             mat = mats,
+#             thd = thds,
+#             titles = titles,
+#             clip_widget = False, 
+#             TPB_mesh = [TPB_mesh_a, TPB_mesh_c],
+#             log_scale = log_scale)
 
-    if inputs['show_1D_plots']:
-        import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
+#     if inputs['show_1D_plots']:
+#         import plotly.graph_objects as go
+#         from plotly.subplots import make_subplots
 
-        Nx = inputs['Nx_a'] + inputs['Nx_e'] + inputs['Nx_c']
-        x = np.arange(Nx)*inputs['dx']*1e6
+#         Nx = inputs['Nx_a'] + inputs['Nx_e'] + inputs['Nx_c']
+#         x = np.arange(Nx)*inputs['dx']*1e6
 
-        Vio_lin = np.zeros(Nx)
-        Vio_min = np.zeros_like(Vio_lin)
-        Vio_max = np.zeros_like(Vio_lin)
-        Vio_c_up = np.zeros_like(Vio_lin)
-        Vio_c_down = np.zeros_like(Vio_lin)
+#         Vio_lin = np.zeros(Nx)
+#         Vio_min = np.zeros_like(Vio_lin)
+#         Vio_max = np.zeros_like(Vio_lin)
+#         Vio_c_up = np.zeros_like(Vio_lin)
+#         Vio_c_down = np.zeros_like(Vio_lin)
 
-        for i in range(Nx):
-            a = sol_Vio[i, :, :][~np.isnan(sol_Vio[i, :, :])]
-            Vio_lin[i] = np.average(a)
-            Vio_max[i] = np.max(a)
-            Vio_min[i] = np.min(a)
-            Vio_c_down[i], Vio_c_up[i] = mean_confidence_interval(a)
+#         for i in range(Nx):
+#             a = sol_Vio[i, :, :][~np.isnan(sol_Vio[i, :, :])]
+#             Vio_lin[i] = np.average(a)
+#             Vio_max[i] = np.max(a)
+#             Vio_min[i] = np.min(a)
+#             Vio_c_down[i], Vio_c_up[i] = mean_confidence_interval(a)
 
-        plot_with_continuous_error(x, Vio_lin, Vio_max, Vio_min, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title='Hydrogen concentration (kgm-3)')
+#         plot_with_continuous_error(x, Vio_lin, Vio_max, Vio_min, Vio_c_down, Vio_c_up, x_title='Distance from anode (µm)', y_title='Hydrogen concentration (kg/m3)', title='Hydrogen concentration (kgm-3)')
 
 def create_dense_matrices(
-        inputs, 
         phi, 
         masks_dict, 
         indices, 
         field_functions, 
         TPB_dict,
-        determine_gradients=False,
+        K_array_ion
         ):
+    
+    def determine_fluxes():
+        
+        # from tqdm import tqdm
+        from modules.preprocess import harmonic_mean as hm
+        dx = inputs['microstructure']['dx']
+        ds = masks_dict['ds']
+        flux_W = [None]*len(phi)
+        flux_E = [None]*len(phi)
+
+        # determine the fluxes
+        flux_W = np.zeros(shape=ds[2].shape)
+        flux_E = np.zeros(shape=ds[2].shape)
+        K_array_ion[~ds[2]] = np.nan
+
+        for n in range(len(indices[2]['all_points'])):
+            i,j,k = indices[2]['all_points'][n]
+            if i==0 or i==N[2][0]-1: continue
+            # aW and aE are [S] or [A/V]
+            # aW = J_scl[p][n,indices[p]['west_nb'][n]] if indices[p]['west_nb'][n]!=-1 else 0
+            # aE = J_scl[p][n,indices[p]['east_nb'][n]] if indices[p]['east_nb'][n]!=-1 else 0
+
+            # kw and ke are [S/m]
+            Kw = hm(K_array_ion[i,j,k], K_array_ion[i-1,j,k])
+            Ke = hm(K_array_ion[i,j,k], K_array_ion[i+1,j,k])
+
+            # flux_W and flux_E are [A/m2]
+            phi_nb = phi[2][indices[2]['west_nb'][n]] if indices[2]['west_nb'][n]!=-1 else np.nan
+            flux_W[i,j,k] = Kw * (phi_nb - phi[2][n]) / dx
+            
+            phi_nb = phi[2][indices[2]['east_nb'][n]] if indices[2]['east_nb'][n]!=-1 else np.nan
+            flux_E[i,j,k] = Ke * (phi_nb - phi[2][n]) / dx
+
+        flux_W[~ds[2]] = np.nan
+        flux_E[~ds[2]] = np.nan
+            
+        return flux_W, flux_E
+    
+    def create_field_variable(func, phase):
+        field_mat = np.zeros(shape = N[1])
+
+        for n in indices[phase]['interior']:
+            i,j,k = indices[phase]['all_points'][n]
+            if phase==3: i += Lx_a + Lx_e
+
+            field_mat[i,j,k] = func(phi_dense[i,j,k])
+
+        return field_mat
+
+    def create_TPB_field_variable(func_name, location):
+        if func_name == 'current_density':
+            func = field_functions['f'][2] if location=='anode' else field_functions['f'][5]
+        elif func_name == 'eta_act':
+            func = field_functions['eta_a_act'] if location=='anode' else field_functions['eta_c_act']
+        elif func_name == 'eta_con':
+            func = field_functions['eta_a_con'] if location=='anode' else field_functions['eta_c_con']
+
+        TPB_mat = np.zeros(N[1])
+
+        for phase in range(len(phi)):
+            if phase==0 and location=='cathode': continue
+            elif phase==3 and location=='anode': continue
+
+            for n in indices[phase]['source']:
+                i,j,k = indices[phase]['all_points'][n]
+                if is_edge(N[phase], i,j,k): continue
+                
+                flag_a, flag_e, flag_c = False, False, False
+                if phase==0: flag_a = True
+                elif phase==3:
+                    i += Lx_a + Lx_e
+                    flag_c = True
+                elif phase==1 or phase==2:
+                    if i < Lx_a: flag_a = True
+                    elif i >= Lx_a and i < Lx_a + Lx_e: flag_e = True       # it should never happen [no source points in the electrolyte]
+                    elif i >= Lx_a + Lx_e: flag_c = True
+
+                if flag_a and location=='cathode': continue
+                elif flag_c and location=='anode': continue
+                elif flag_a and location=='anode':
+                    cH2_i = phi_dense[i,j,k] if phase==0 else np.average(phi_dense[i-1:i+2,j-1:j+2,k-1:k+2][ds_entire[0][i-1:i+2,j-1:j+2,k-1:k+2]])
+                    cO2_i = None
+                elif flag_c and location=='cathode':
+                    cH2_i = None
+                    cO2_i = phi_dense[i,j,k] if phase==3 else np.average(phi_dense[i-1:i+2,j-1:j+2,k-1:k+2][ds_entire[3][i-1:i+2,j-1:j+2,k-1:k+2]])
+                
+                Vel_i = phi_dense[i,j,k] if phase==1 else np.average(phi_dense[i-1:i+2,j-1:j+2,k-1:k+2][ds_entire[1][i-1:i+2,j-1:j+2,k-1:k+2]])
+                Vio_i = phi_dense[i,j,k] if phase==2 else np.average(phi_dense[i-1:i+2,j-1:j+2,k-1:k+2][ds_entire[2][i-1:i+2,j-1:j+2,k-1:k+2]])
+
+                TPB_mat[i,j,k] = func(
+                    cH2_i if flag_a else cO2_i,
+                    Vel_i, 
+                    Vio_i,
+                    )
+                
+        return TPB_mat
+    
     write_arrays = inputs['output_options']['write_arrays']
     ds = masks_dict['ds']
-    N = ds[0].shape
-    phi_dense = np.zeros(N)
-    phi_dense[ds[0]] = phi[0]
-    phi_dense[ds[1]] = phi[1]
-    phi_dense[ds[2]] = phi[2]
-    Ia_mat = create_TPB_field_variable_individual(
-        phi_dense, 
-        indices, 
-        masks_dict, 
-        field_functions['Ia'],
-        )
+    N = [ds[i].shape for i in range(len(phi))]
     
-    eta_act_mat = create_TPB_field_variable_individual(
-        phi_dense, 
-        indices, 
-        masks_dict, 
-        field_functions['eta_act'],
-        )
+    flux_W, flux_E = determine_fluxes()
     
-    eta_conc_mat = create_field_variable_individual(
-        N, 
-        phi_dense, 
-        indices[0], 
-        field_functions['eta_con'],
-        )
-    
-    sol_cH2 = np.copy(phi_dense)
-    sol_cH2[ds[0] == False] = np.nan
-    sol_Vel = np.copy(phi_dense)
-    sol_Vel[ds[1] == False] = np.nan
-    sol_Vio = np.copy(phi_dense)
-    sol_Vio[ds[2] == False] = np.nan
+    if len(phi) == 4:    # anode, electrolyte, cathode
+        Lx_a = N[0][0]
+        Lx_e = N[1][0] - N[0][0] - N[3][0]
+        Lx_c = N[3][0]
+        ds_entire = [None]*4
+        # gas phase (anode) - H2
+        ds_entire[0] = np.concatenate((ds[0], np.zeros((Lx_e + Lx_c, N[0][1], N[0][2]),dtype=bool)), axis=0)
+        # electron phase (anode & cathode)
+        ds_entire[1] = ds[1]
+        # ion phase (anode & cathode)
+        ds_entire[2] = ds[2]
+        # gas phase (cathode) - O2
+        ds_entire[3] = np.concatenate((np.zeros((Lx_a+Lx_e, N[0][1], N[0][2]),dtype=bool),ds[3]),axis=0)
+    elif len(phi) == 3:      # anode 
+        ds_entire = ds
+        
+    phi_dense = np.zeros(N[1])
+    for i in range(len(phi)):
+        phi_dense[ds_entire[i]] = phi[i]
 
-    if write_arrays:
-        np.savez(f'Binary files/arrays/matrices_{inputs["file_options"]["id"]}.npz', 
-                 dx = inputs['microstructure']['dx'],
-                 phi = phi_dense, 
-                 cH2 = sol_cH2, 
-                 Vel = sol_Vel, 
-                 Vio = sol_Vio, 
-                 Ia = Ia_mat, 
-                 eta_act = eta_act_mat, 
-                 eta_con = eta_conc_mat,
-                 lines = TPB_dict['lines'])
+    Ia_mat = create_TPB_field_variable('current_density', 'anode')
+    if len(phi) == 4: Ic_mat = create_TPB_field_variable('current_density', 'cathode')
+    I_mat = Ia_mat + Ic_mat if len(phi) == 4 else Ia_mat
+    I_mat[I_mat==0] = np.nan
+
+    eta_a_act_mat = create_TPB_field_variable('eta_act', 'anode')
+    if len(phi) == 4: eta_c_act_mat = create_TPB_field_variable('eta_act', 'cathode')
+    eta_act_mat = eta_a_act_mat + eta_c_act_mat if len(phi) == 4 else eta_a_act_mat
+    eta_act_mat[eta_act_mat==0] = np.nan
+    
+    eta_a_con_mat = create_field_variable(field_functions['eta_a_con'],0)
+    if len(phi) == 4: eta_c_con_mat = create_field_variable(field_functions['eta_c_con'],3)
+    eta_con_mat = eta_a_con_mat + eta_c_con_mat if len(phi) == 4 else eta_a_con_mat
+    ds_gas = np.zeros_like(ds[1],dtype=bool)
+    ds_gas[:N[0][0],...] = ds[0]
+    ds_gas[N[1][0]-N[0][0]:,...] = ds[3]
+    eta_con_mat[~ds_gas] = np.nan
+    
+    sol_phi = [None] * len(phi)
+    grad_phi = [None] * len(phi)
+
+    # from findiff import FinDiff
+    # d_d = [None]*3
+    # d_d[0] = FinDiff(0, dx, acc=4)
+    # d_d[1] = FinDiff(1, dx, acc=4)
+    # d_d[2] = FinDiff(2, dx, acc=4)
+
+    for i in range(len(phi)):
+        sol_phi[i] = np.copy(phi_dense)
+        sol_phi[i][ds_entire[i] == False] = np.nan
+
+        # numpy approach
+        grad_phi[i] = np.gradient(sol_phi[i], inputs['microstructure']['dx'])
+        
+    #     # FinDiff approach
+    #     # grad_phi[i] = [None]*3
+    #     # for dir in range(3):
+    #     #     grad_phi[i][dir] = d_d[dir](sol_phi[i]) 
 
     dense_m = {
         'phi_dense': phi_dense,
-        'cH2': sol_cH2, 
-        'Vel': sol_Vel, 
-        'Vio': sol_Vio, 
-        'Ia': Ia_mat, 
+        'rhoH2': sol_phi[0], 
+        'Vel': sol_phi[1], 
+        'Vio': sol_phi[2], 
+        'rhoO2': sol_phi[3] if len(sol_phi)==4 else None,
+        'grad_phi': grad_phi,
+        'I': I_mat, 
         'eta_act': eta_act_mat, 
-        'eta_con': eta_conc_mat,
+        'eta_con': eta_con_mat,
+        'flux_W': flux_W,
+        'flux_E': flux_E,
         }
+    
+    if write_arrays:
+        type = 'entire' if len(phi)==4 else 'anode'
+        np.savez(
+            f'Binary files/arrays/matrices_{type}_{inputs["file_options"]["id"]}.npz', 
+            dx = inputs['microstructure']['dx'],
+            phi = dense_m['phi_dense'], 
+            rhoH2 = dense_m['rhoH2'], 
+            Vel = dense_m['Vel'], 
+            Vio = dense_m['Vio'], 
+            rhoO2 = dense_m['rhoO2'],
+            # grad_phi = dense_m['grad_phi'],
+            I   = dense_m['I'], 
+            eta_act = dense_m['eta_act'],
+            eta_con = dense_m['eta_con'],
+            TPB_dict = TPB_dict,
+            )
+
     return dense_m
 
 def create_csv_output(x, y_avg, y_min=None, y_max=None, y_c_down=None, y_c_up=None, title='y'):
@@ -788,4 +964,71 @@ def plot_domain(
     if show_figure: fig.show()
     if file_name is not None: fig.write_image(file_name+'.svg')
 
+def create_fig_from_1D_model(color):
+    # read csv file
+    import csv
+    import numpy as np
+    # import plotly.express as px
+    import plotly.graph_objects as go
+
+    # read csv file
+    with open('Vio','r') as file:
+        reader = csv.reader(file)
+        # ignore the first 8 lines
+        for _ in range(8):
+            next(reader)
+        data = list(reader)
+        list_nums = [[float(k) for k in data[m][0].split()] for m in range(len(data))]
+        x_Vio = np.array([list_nums[k][0] for k in range(len(list_nums))])
+        Vio = np.array([list_nums[k][1] for k in range(len(list_nums))])
     
+    x = [None] * 3
+    flux = [None] * 3
+    for i,location in enumerate(['anode', 'electrolyte', 'cathode']):
+        if location == 'anode':
+            filename = 'flux_a'
+        elif location == 'electrolyte':
+            filename = 'flux_e'
+        elif location == 'cathode':
+            filename = 'flux_c'
+        with open(filename, 'r') as file:
+            reader = csv.reader(file)
+            # ignore the first 8 lines
+            for _ in range(8):
+                next(reader)
+            data = list(reader)
+            list_nums = [[float(k) for k in data[m][0].split()] for m in range(len(data))]
+            x[i] = np.array([list_nums[k][0] for k in range(len(list_nums))])
+            flux[i] = np.array([list_nums[k][1] for k in range(len(list_nums))])
+
+    flux_tot = np.concatenate([flux[i] for i in range(3)])
+    x_tot = np.concatenate([x[i] for i in range(3)])
+    
+    fig = [None]*2
+    fig[0] = go.Scatter(
+        x=x_Vio,
+        y=Vio,
+        name='Vio_1D_model',
+        mode='lines',
+        yaxis='y2',
+        line=dict(
+            color=color, 
+            width=2, 
+            dash='dash',
+            ),
+        )
+    
+    fig[1] = go.Scatter(
+        x=x_tot,
+        y=flux_tot,
+        name='Ia_1D_model',
+        mode='lines',
+        yaxis='y1',
+        line=dict(
+            color=color, 
+            width=2, 
+            dash='solid',
+            ),
+        )
+
+    return fig
