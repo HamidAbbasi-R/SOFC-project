@@ -1,0 +1,9 @@
+#!/bin/bash --login
+#$ -cwd
+#$ -t 1
+
+# Load module inside jobscript
+module load apps/binapps/anaconda3/2021.11
+
+# The actual job
+python -c "from main import solve_entire_domain as ed; ed(${SGE_TASK_ID})"

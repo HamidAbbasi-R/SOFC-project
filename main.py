@@ -16,17 +16,15 @@ def solve_entire_domain(ID):
 
     separated_domains, voxels = CREATE(
         display = True,
-        save_domains = False,
         )
 
     separated_domains, TPB_dict = TOPOLOGY(
         separated_domains,
-        show_TPB = False,
+        show_TPB = True,
         )
 
     field_functions, bc_dict = SOURCE_TERMS(
-        TPB_dict,
-    )
+        TPB_dict)
 
     masks_dict, indices = INDICES(
         separated_domains, 
@@ -342,3 +340,4 @@ def solve_anode(id):
     end = time.time()
     print('Time elapsed: ', end - start)
     # return Ia_A_m[-2]
+
