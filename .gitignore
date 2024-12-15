@@ -10,3 +10,8 @@ test.py
 *.png
 *.svg
 *.xlsx
+*.pdf
+*.html
+*.csv
+*.npy
+*.pkl
