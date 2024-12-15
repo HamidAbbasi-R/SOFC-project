@@ -314,7 +314,7 @@ def save_image(phase_mat):
     
     N = phase_mat.shape[0]
     for k in tqdm(np.arange(N)):
-        str_1 = "images\phase_1."+f"{k:03}"
+        str_1 = f"images\phase_1.{k:03}"
         imageio.imwrite(str_1, phase_1[:,:,k], format='png')     
 
 def visualize_mesh(
@@ -337,7 +337,11 @@ def visualize_mesh(
         show_axis=False,
         link_colorbar=False,
         edge_width=0,
-        opacity=1
+        opacity=1,
+        notebook=False,
+        save_html=False,
+        background_color='white',
+        onlyTPB=False,
         ):
     """
     Visualizes the mesh via PyVista.
@@ -347,7 +351,10 @@ def visualize_mesh(
     """
     import pyvista as pv
     import matplotlib.pyplot as plt
+    showMAT = True
     
+    if notebook: 
+        pv.set_jupyter_backend("trame")
     pv.set_plot_theme("document")
     # check if colormap is qualitative or not
     is_qualitative = False
@@ -356,7 +363,11 @@ def visualize_mesh(
                 'tab20c']:
         is_qualitative = True
     
-    cmap = plt.cm.get_cmap(cmap)     
+    cmap = plt.cm.get_cmap(cmap)
+    # if is_qualitative:
+    #     unique_numbers = len(np.unique(mat[0]))
+    #     cmap.colors = cmap.colors[:unique_numbers]
+    #     cmap.N = unique_numbers
      
     if thd is None: thd = [()]*len(mat)
     if entire_domain is None: entire_domain = [False]*len(mat)
@@ -378,17 +389,18 @@ def visualize_mesh(
         p = pv.Plotter(
             shape=(1, subplts+1), 
             border=True, 
-            notebook=False,
+            notebook=notebook,
             )
     else:
         p = pv.Plotter(
             shape=(1, subplts), 
             border=True, 
-            notebook=False, 
+            notebook=notebook, 
             off_screen=True if save_graphics else False,
             )
         if show_axis: p.show_axes()
     
+    if background_color=='black': p.set_background('black', top='white')
     for i in np.arange(subplts):
         scale = log_scale[i] if log_scale is not None else False
         sargs = dict(
@@ -434,27 +446,30 @@ def visualize_mesh(
                 opacity=opacity,
                 )
         else:
-            p.add_mesh(
-                mesh, 
-                scalar_bar_args=sargs, 
-                log_scale=scale, 
-                cmap=cmap, 
-                # cmap=cmap_mat[i] if is_qualitative else cmap, 
-                clim=clim, 
-                show_edges=False if edge_width==0 else True,
-                line_width=edge_width,
-                opacity=opacity,
-                )
-            p.add_bounding_box(line_width=1, color='black')
-            if bool(titles):
-                p.add_text(titles[i], font_size=20, position='lower_edge')
+            if not onlyTPB:
+                p.add_mesh(
+                    mesh, 
+                    scalar_bar_args=sargs, 
+                    log_scale=scale, 
+                    cmap=cmap, 
+                    # cmap=cmap_mat[i] if is_qualitative else cmap, 
+                    clim=clim, 
+                    show_edges=False if edge_width==0 else True,
+                    line_width=edge_width,
+                    opacity=opacity,
+                    )
+                p.add_bounding_box(line_width=1, color='black')
+                if bool(titles):
+                    p.add_text(titles[i], font_size=20, position='lower_edge')
         if bool(TPB_mesh):
             if save_vtk: TPB_mesh[i].save(f'TPB_mesh{i}.vtk')
             if entire_domain[i]:
-                p.add_mesh(TPB_mesh[i][0], line_width=10, color='r')
-                p.add_mesh(TPB_mesh[i][1], line_width=10, color='r')
+                p.add_mesh(TPB_mesh[i][0], line_width=4, color='r')
+                p.add_mesh(TPB_mesh[i][1], line_width=4, color='r')
             else:
-                p.add_mesh(TPB_mesh[i], line_width=10, color='r')
+                p.add_mesh(TPB_mesh[i], line_width=5, color='r')
+                if onlyTPB:
+                    p.add_bounding_box(line_width=1, color='black')
 
         
         if isometric: p.view_isometric()
@@ -506,6 +521,7 @@ def visualize_mesh(
         if save_graphics:
             scale_factor = 1
             p.window_size = [scale_factor*p.window_size[0],scale_factor*p.window_size[1]]
+            # p.show(jupyter_backend='trame' if notebook else 'static')
             p.show()
             p.update()
             p.screenshot('screenshot.png')
@@ -516,6 +532,19 @@ def visualize_mesh(
             #     p.export_html("img.html")
         else:
             p.show()
+            if save_html:
+                scene = p.export_html(filename='img.html')
+
+                from IPython.display import display, HTML
+                html_str = scene.getvalue().replace('"','&quot;')
+                iframe=f"""
+                <iframe
+                    srcdoc="{html_str}"
+                    width='100%'
+                    height='500'
+                </iframe>
+                """
+                HTML(iframe)
 
     return None
     
@@ -838,21 +867,24 @@ def create_dense_matrices(
         }
     
     if write_arrays:
+        import pickle
         type = 'entire' if len(phi)==4 else 'anode'
-        np.savez(
-            f'Binary files/arrays/matrices_{type}_{inputs["file_options"]["id"]}.npz', 
-            dx = inputs['microstructure']['dx'],
-            phi = dense_m['phi_dense'], 
-            rhoH2 = dense_m['rhoH2'], 
-            Vel = dense_m['Vel'], 
-            Vio = dense_m['Vio'], 
-            rhoO2 = dense_m['rhoO2'],
-            # grad_phi = dense_m['grad_phi'],
-            I   = dense_m['I'], 
-            eta_act = dense_m['eta_act'],
-            eta_con = dense_m['eta_con'],
-            TPB_dict = TPB_dict,
-            )
+        with open(f'Binary files/arrays/matrices_{type}_{inputs["file_options"]["id"]}.pkl', 'wb') as file:
+            pickle.dump(
+                {
+                    "dx":       inputs['microstructure']['dx'],
+                    "phi":      dense_m['phi_dense'],
+                    "rhoH2":    dense_m['rhoH2'],
+                    "Vel":      dense_m['Vel'],
+                    "Vio":      dense_m['Vio'],
+                    "rhoO2":    dense_m['rhoO2'],
+                    "I":        dense_m['I'],
+                    "eta_act":  dense_m['eta_act'],
+                    "eta_con":  dense_m['eta_con'],
+                    "TPB_dict": TPB_dict,
+                    "mask":     ds,
+                    }, 
+                file)
 
     return dense_m
 
@@ -912,15 +944,15 @@ def plot_domain(
 
     # choose a qualitiative colormap from zmin to zmax
     if qualitative:
-        pass
-        # if zmin == zmax:
-        #     colorscale = px.colors.qualitative.Bold
-        # else:
-        #     colorscale = [px.colors.qualitative.Bold[i] for i in np.arange(zmax-zmin+1)]
+        # pass
+        if zmin == zmax:
+            colorscale = px.colors.qualitative.Set1
+        else:
+            colorscale = [px.colors.qualitative.Set1[i+2] for i in np.arange(zmax-zmin+1)]
     else:
-        pass
-        # colorscale = 'Viridis'
-    colorscale = colormap
+        # pass
+        colorscale = 'Viridis'
+    # colorscale = colormap
         
     # create figure
     fig = make_subplots(
@@ -964,7 +996,7 @@ def plot_domain(
     if show_figure: fig.show()
     if file_name is not None: fig.write_image(file_name+'.svg')
 
-def create_fig_from_1D_model(color):
+def create_fig_from_1D_model(color, ID):
     # read csv file
     import csv
     import numpy as np
@@ -972,7 +1004,7 @@ def create_fig_from_1D_model(color):
     import plotly.graph_objects as go
 
     # read csv file
-    with open('Vio','r') as file:
+    with open(f'Binary files/COMSOL files/Vio_{ID:03}','r') as file:
         reader = csv.reader(file)
         # ignore the first 8 lines
         for _ in range(8):
@@ -986,11 +1018,12 @@ def create_fig_from_1D_model(color):
     flux = [None] * 3
     for i,location in enumerate(['anode', 'electrolyte', 'cathode']):
         if location == 'anode':
-            filename = 'flux_a'
+            filename = f'flux_a_{ID:03}'
         elif location == 'electrolyte':
-            filename = 'flux_e'
+            filename = f'flux_e_{ID:03}'
         elif location == 'cathode':
-            filename = 'flux_c'
+            filename = f'flux_c_{ID:03}'
+        filename = f'Binary files/COMSOL files/{filename}'
         with open(filename, 'r') as file:
             reader = csv.reader(file)
             # ignore the first 8 lines

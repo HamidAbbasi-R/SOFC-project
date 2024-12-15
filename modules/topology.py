@@ -20,6 +20,8 @@ def create_microstructure_plurigaussian(
         periodic = True, 
         display = False, 
         histogram = 'none',
+        notebook = True,
+        save_matrix = False,
         ):
     """
     This function creates a periodic three phase 2D phase matrix with the given parameters.
@@ -173,7 +175,12 @@ def create_microstructure_plurigaussian(
     elif display==True and dim==3:
         # from postprocess import visualize_mesh
         from modules.postprocess import visualize_mesh as vm 
-        vm([phase_mat],[(2,3)], save_vtk=True)
+        vm(
+            [phase_mat],
+            # [(2,3)], 
+            # save_vtk=False,
+            # cmap='Set1',
+            notebook=notebook,)
 
     # display the histogram of the smooth matrices
     if histogram=='1D':
@@ -218,6 +225,16 @@ def create_microstructure_plurigaussian(
                   selector=dict(mode='markers'))
         fig.write_image("hist2D.svg")
         fig.show()
+    
+    if save_matrix:
+        # create a random 3 digit number to save the matrix from 000 to 999
+        import random
+        ID = random.randint(0,999)
+        # convert ID number to a string with 3 digits
+        ID = str(ID).zfill(3)
+        # save the phase matrix in a json file
+        np.save(f'phase_matrix_{ID}.npy', phase_mat)
+        
     return phase_mat
 
 def measure_TPB(
@@ -488,7 +505,11 @@ def measure_TPB_notvec(phase_mat):
     
     return TPBs, TPB_density, vertices, lines
 
-def percolation_analysis(phase_mat, MIEC=False):
+def percolation_analysis(
+        phase_mat, 
+        MIEC=False,
+        ):
+    
     from scipy import ndimage as ndi
     # only the pores (phase_mat==1) must be true for percolation analysis
     if MIEC: 
@@ -562,8 +583,15 @@ def percolation_analysis(phase_mat, MIEC=False):
     lw_shuffled[:,:,:,0] = lw1_shuffled
     lw_shuffled[:,:,:,1] = lw2_shuffled
     lw_shuffled[:,:,:,2] = lw3_shuffled
+
+    # percolation percentage
+    per1 = np.sum(phase_mat_nans==1) / np.sum(phase_mat==1)
+    per2 = np.sum(phase_mat_nans==2) / np.sum(phase_mat==2)
+    per3 = np.sum(phase_mat_nans==3) / np.sum(phase_mat==3)
+
+    percentage = [per1, per2, per3]
     
-    return phase_mat_nans, lw_shuffled, percolating_labels
+    return phase_mat_nans, lw_shuffled, percolating_labels, percentage
         
 def shuffle_labels(labeled_mat):
     # shuffling the labels without changing the location of "Falses"
@@ -784,6 +812,7 @@ def topological_operations(
         domain_old_list, 
         show_TPB=False, 
         show_TPB_variations=False,
+        MIEC=False,
         ):
     """
     domain topological operations
@@ -806,7 +835,7 @@ def topological_operations(
     if inputs['solver_options']['subgrid']: domain_old_scaled = remove_thin_boundaries(domain_old_scaled.astype(float))
     # extract the domain that should be solved. ds is short for Domain for Solver.
     # when periodic boundary condition is used, percolation analysis should not be done.
-    domain, _, _ = percolation_analysis(domain_old)
+    domain, _, _ = percolation_analysis(domain_old, MIEC)
     if inputs['solver_options']['subgrid']: domain_scaled, _, _ = percolation_analysis(domain_old_scaled)
 
     percolation_percentage =[None] * 3
@@ -840,7 +869,9 @@ def topological_operations(
             phase_mat=domain,
             dx=dx,
             sigma=sigma_seg,
-            display=False)
+            display=False,
+            )
+        
         print(f'average YSZ diameter: {1000*2*np.mean((volumes[2] / np.pi * 3/4)**(1/3)):.2f} nm')
         from modules.postprocess import visualize_mesh
         visualize_mesh(
@@ -922,10 +953,17 @@ def topological_operations(
 
 # specific functions for entire cell microstructure
 def create_microstructure_entire_cell(
-        display=False, 
-        save_domains = False,
+        display=False,
         ):
         
+    # 1: pore anode
+    # 2: Ni anode (e-)
+    # 3: YSZ anode, electrolyte, and cathode (O2-) [can be changed for GDC in cathode]
+    # 4: pore cathode
+    # 5: LSM cathode (e-)
+    # the program should be developed further to incorporate MIEC materials in cathode side
+    
+    # DPB is defined as the interface between pores cathode (4) and LSM cathode (5)
     print("Generating microstructure...", end='')
 
     dx = inputs['microstructure']['dx']
@@ -1019,9 +1057,12 @@ def create_microstructure_entire_cell(
         visualize_mesh(
             [domain],
             [()],
+            save_graphics=False,
+            cmap='Set1',
+            link_colorbar=True,
             )
 
-    if save_domains:
+    if inputs['output_options']['save_domains']:
         from scipy.io import savemat
         savemat('Binary files/domain_anode.mat', {'domain_anode': domain[0]})
         savemat('Binary files/domain_cathode.mat', {'domain_cathode': domain[1]})
@@ -1034,18 +1075,30 @@ def topological_operations_entire_cell(
         show_TPB=False,
         ):
     
+    MIEC = inputs['microstructure']['cathode']['MIEC']
     domain_a = separated_domains[0]
     domain_e = separated_domains[1]
     domain_c = separated_domains[2]
 
     domain_a, TPB_dict_a = topological_operations([domain_a, domain_e])
-    domain_c, TPB_dict_c = topological_operations([domain_c-2, domain_c-2])   # normalize between 1 and 3
+    domain_c, TPB_dict_c = topological_operations([domain_c-2, domain_c-2], MIEC=MIEC)   # normalize between 1 and 3
+
 
     # TPB_dict_c['vertices'][:,0] += inputs['Nx_a'] + inputs['Nx_e']
     domain_c += 2
+
+    interface = None
+    if MIEC:
+        interface = measure_interface(domain_c, [4, 5])
+        interface =np.concatenate((np.zeros_like(domain_a,dtype=bool), np.zeros_like(domain_e,dtype=bool), interface), axis=0)
+
     domain = np.concatenate((domain_a, domain_e, domain_c), axis=0)
     separated_domains = [domain_a, domain_e, domain_c]
-    TPB_dict = {"anode": TPB_dict_a, "cathode": TPB_dict_c}
+    TPB_dict = {
+        "anode": TPB_dict_a, 
+        "cathode": TPB_dict_c, 
+        "interface": interface,
+        }
 
     if show_TPB:
         from modules.topology import create_vertices_in_uniform_grid as cvug
@@ -1065,12 +1118,13 @@ def topological_operations_entire_cell(
         from modules.postprocess import visualize_mesh
         visualize_mesh(
             [domain],
-            [(3,3)],        # 1: pores-anode, 2: Ni, 3: YSZ, 4: pores-cathode, 5: LSM
+            [(2,4)],        # 1: pores-anode, 2: Ni, 3: YSZ, 4: pores-cathode, 5: LSM
             TPB_mesh= [[TPB_mesh_a, TPB_mesh_c]],
             entire_domain=[True],
+            # cmap = 'Set1',
             )
 
-    return separated_domains, TPB_dict 
+    return separated_domains, TPB_dict
 
 def create_ideal_microstructure_spheres(
         voxels, 
@@ -1109,11 +1163,9 @@ def create_ideal_microstructure_spheres(
 
     return TPB_analytical, TPB_measured
 
-def create_ideal_microstructre_straight_bars(display=False):
-    Nx = inputs['microstructure']['Nx']
-    Ny = inputs['microstructure']['Ny']
-    Nz = inputs['microstructure']['Nz']
-    N = [Nx, Ny, Nz]
+def create_ideal_microstructre_straight_bars(voxels, display=False):
+    Nx, Ny, Nz = voxels
+    N = voxels
 
     domain = np.ones(shape = N, dtype=int)
     domain[: , :int(Ny/2) , :int(Nz/2)] = 2
@@ -1821,7 +1873,7 @@ def put_fibre_in_bed(
 
 def bend_fibre(
         fibre, 
-        bending_factor, 
+        bending_factor=1, 
         flip=False,
         ):
     

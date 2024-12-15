@@ -714,15 +714,6 @@ def sourcefunc_calc_entire_cell(
         TPB_dict,
         ):
 
-    """
-    Calculates the source function for the entire cell.
-    phases:
-    0: anode - pores
-    1: anode - Ni
-    2: anode, and electrolyte: YSZ
-    3: cathode - pores
-    4
-    """
     print("Source function calculations...", end='')
     from sympy import diff, exp, lambdify, log, simplify, symbols
 
@@ -783,15 +774,16 @@ def sourcefunc_calc_entire_cell(
     # Apparently the units of pH2 and pH2O should be [Pa] in this equations; refer to Boer's thesis for more info
     I0a_l = 31.4 * (pH2)**(-0.03) * (pH2O)**(0.4) * np.exp(-152155/Ru/T)     
     I0c_l = 1e-5 # ref: 10.1149/07801.2711ecst [A/m]
+    I0c_dpb = 1e-5 # ref: 10.1149/07801.2711ecst [A/m2]
     
     # test values (for cases where the source function is not used; debugging)
     # I0a_l = 0
     # I0c_l = 0
-    
+
     # conversion factors
     vf_TPB_a = TPB_dict['anode']['vf_TPB']      # volume fraction of TPB, anode [-]
     vf_TPB_c = TPB_dict['cathode']['vf_TPB']      # volume fraction of TPB, cathode [-]
-    
+
     # ratio TPB
     cf_TPB_len_vol_a = TPB_dict['anode']['ratio_TPB']      # ratio of TPB length to volume [-]
     cf_TPB_len_vol_c = TPB_dict['cathode']['ratio_TPB']      # ratio of TPB length to volume [-]
@@ -825,12 +817,19 @@ def sourcefunc_calc_entire_cell(
     eta_a_con = Ru*T/n_a/F*log(pH2_inlet/pH2_var * pH2O_var/pH2O_inlet)         # anode concentration overpotential [V]
     eta_c_con = Ru*T/n_c/F*log(pO2_inlet/pO2_var)         # cathode concentration overpotential [V]
     
-    E0 = 1.253 - 2.4516e-4*(T-298.15)        # standard potential [V]
+    # reversible potential of the cell [V] 
+    # fitted from fig 2.1 Fuel Cell Handbook (Seventh Edition) By EG&G Technical Services, Inc.
+    # used here as well: https://doi.org/10.1016/j.energy.2017.10.088
+    # T is in [K] in this equation
+    E0 = 1.253 - 2.4516e-4*(T)
+    
     # Nernst potential [V]; mole fractions [-] should be used instead of partial pressure [Pa]. 
     # Yes! It makes a difference! because we are dealing with square roots!
-    E_N = E0 + Ru*T/2/F*np.log(XH2_b[0]*XO2_b[0]**0.5/XH2O_b[0])
+    E = E0 + Ru*T/2/F*np.log(XH2_b[0]*XO2_b[0]**0.5/XH2O_b[0])
+
+    # activation overpotentials [V]
     eta_a_act = (Vel - Vio) - eta_a_con                 # refer to figure [voltage distribution]
-    eta_c_act = E_N - (Vel - Vio) - eta_c_con           # refer to figure [voltage distribution]
+    eta_c_act = E - (Vel - Vio) - eta_c_con           # refer to figure [voltage distribution]
 
     Ia = I0a*(
         exp( n_a*   aa * F * eta_a_act /Ru/T)-
@@ -840,7 +839,15 @@ def sourcefunc_calc_entire_cell(
         exp( n_c*   ac * F * eta_c_act /Ru/T)-
         exp(-n_c*(1-ac)* F * eta_c_act /Ru/T))               # cathode current density [A/m^3]
 
-    source_func = [None]*6         # initialization
+    MIEC = False if TPB_dict['interface'] is None else True
+    if MIEC:
+        Ic_DPB = I0c_dpb*(
+            exp( n_c*   ac * F * eta_c_act /Ru/T)-
+            exp(-n_c*(1-ac)* F * eta_c_act /Ru/T))               # cathode current density [A/m^3]
+    
+    n = 6 if not MIEC else 7
+    source_func = [None]*n         # initialization
+    
     # gas anode
     source_func[0] = simplify(conversion_H2*Ia/n_a/F*MH2) if inputs['solver_options']['transport_eqs'] != ['ion'] else None # mass [kg/m3/s]
     
@@ -858,6 +865,9 @@ def sourcefunc_calc_entire_cell(
     
     # ion cathode
     source_func[5] = simplify(-conversion_YSZ_c*Ic_TPB)           # ion [A/m3]
+
+    # ion cathode (DPB)
+    if MIEC: source_func[6] = simplify(-1*Ic_DPB)           # ion [A/m3]
 
     expected_sign = [           # expected sign of the source terms
         -1,     # gas anode         : sink
@@ -1023,8 +1033,8 @@ def get_indices_entire_cell(
     return masks_dict, indices
 
 def create_SOLE_individual_entire_cell(
-        bc_dict, 
-        indices, 
+        bc_dict,
+        indices,
         masks_dict,
         voxels,
         ):
@@ -1035,26 +1045,29 @@ def create_SOLE_individual_entire_cell(
     T = inputs['operating_conditions']['T']
     cond_H2 = 7.474e-4        # [m^2/s]  https://doi.org/10.1016/j.ces.2008.07.037  should Knudsen diffusivity be considered?  
     cond_el_a = 3.27e6 - 1065.3 * T       # [S/m]
-    cond_ion_a = 3.34e4 * np.exp(-10350/T)    # [S/m]
+    
+    # ion conductivity at anode seems to be incorrect
+    # according to https://doi.org/10.1016/0378-7753(95)02269-4 the value used here is ion conductivity of electrolyte
+    cond_ion_a = 3.34e4 * np.exp(-10350/T)    # [S/m]  
 
     cond_O2 = 0.64e-4       # [m^2/s] https://doi.org/10.1016/j.mex.2020.100822 should Knudsen diffusivity be considered?
     cond_el_c = 3.27e6 - 1065.3 * T       # ??? needs reference [S/m]
     cond_ion_YSZ_c = 4e-1 # [S/m] @ T=1173.15 https://doi.org/10.1016/j.ssi.2004.11.019
-    # cond_ion_LSM_c = 4e-6 # [S/m] @ T=1173.15 https://doi.org/10.1016/j.ssi.2004.11.019
     
     cond_ion_electrolyte = 4e-1  # ??? [S/m] @ T=1173.15 https://doi.org/10.1016/j.ssi.2004.11.019
-    
+    # cond_ion_LSM_c = 4e-6 # [S/m] @ T=1173.15 https://doi.org/10.1016/j.ssi.2004.11.019
+
     K = [
-        cond_H2, 
-        cond_el_a, 
-        cond_ion_a, 
-        cond_O2, 
-        cond_el_c, 
-        cond_ion_YSZ_c, 
-        cond_ion_electrolyte,
-        # cond_ion_LSM_c,
-        ] 
-    
+        cond_H2,                # 0
+        cond_el_a,              # 1
+        cond_ion_a,             # 2
+        cond_O2,                # 3
+        cond_el_c,              # 4
+        cond_ion_YSZ_c,         # 5
+        cond_ion_electrolyte,   # 6
+        # cond_ion_LSM_c,         # 7
+        ]
+
     # voxels
     N_a = voxels[0]
     N_c = voxels[1]
