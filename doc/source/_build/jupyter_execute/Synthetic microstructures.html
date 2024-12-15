@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>&lt;no title&gt; &#8212; SOFC multiscale 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=f2835650" />
+    <link rel="stylesheet" type="text/css" href="../_static/jupyter-sphinx.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/thebelab.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css" />
+    <script src="../_static/documentation_options.js?v=2709fde1"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/thebelab-helper.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">SOFC multiscale</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Synthetic%20microstructures.html">Synthetic microstructures</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;../..&quot;</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">modules.topology</span> <span class="kn">import</span> <span class="n">create_microstructure_plurigaussian</span>
+<span class="n">domain</span> <span class="o">=</span> <span class="n">create_microstructure_plurigaussian</span><span class="p">(</span>
+    <span class="p">[</span><span class="mi">200</span><span class="p">,</span><span class="mi">50</span><span class="p">,</span><span class="mi">50</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span><span class="mf">0.3</span><span class="p">,</span><span class="mf">0.4</span><span class="p">],</span>
+    <span class="mf">300e-9</span><span class="p">,</span>
+    <span class="mf">50e-9</span><span class="p">,</span>
+    <span class="n">display</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">notebook</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">domain</span> <span class="o">=</span> <span class="n">create_microstructure_plurigaussian</span><span class="p">(</span>
+    <span class="p">[</span><span class="mi">200</span><span class="p">,</span><span class="mi">50</span><span class="p">,</span><span class="mi">50</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.33</span><span class="p">,</span><span class="mf">0.33</span><span class="p">,</span><span class="mf">0.34</span><span class="p">],</span>
+    <span class="mf">300e-9</span><span class="p">,</span>
+    <span class="mf">50e-9</span><span class="p">,</span>
+    <span class="n">gradient_factor</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">display</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">notebook</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "14961cbc7eb942e2980e6134012ff731", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "d624a998f2c14309bf7b68a19bc54161", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;../..&quot;</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">modules.topology</span> <span class="kn">import</span> <span class="n">create_fibre</span>
+<span class="kn">from</span> <span class="nn">modules.topology</span> <span class="kn">import</span> <span class="n">create_twisted_fibre</span>
+<span class="kn">from</span> <span class="nn">modules.topology</span> <span class="kn">import</span> <span class="n">create_twisted_multifibre</span>
+<span class="kn">from</span> <span class="nn">modules.topology</span> <span class="kn">import</span> <span class="n">create_fibrous_bed</span>
+<span class="kn">from</span> <span class="nn">modules.topology</span> <span class="kn">import</span> <span class="n">bend_fibre</span>
+
+<span class="kn">from</span> <span class="nn">modules.postprocess</span> <span class="kn">import</span> <span class="n">visualize_mesh</span> <span class="k">as</span> <span class="n">vm</span>
+<span class="kn">from</span> <span class="nn">modules.topology</span> <span class="kn">import</span> <span class="n">measure_TPB</span>
+<span class="kn">from</span> <span class="nn">modules.topology</span> <span class="kn">import</span> <span class="n">create_vertices_in_uniform_grid</span>
+
+<span class="n">fibre</span> <span class="o">=</span> <span class="n">create_fibre</span><span class="p">(</span>
+    <span class="n">radius</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">length</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">twisted_fibre</span> <span class="o">=</span> <span class="n">create_twisted_fibre</span><span class="p">(</span>
+    <span class="n">radius</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">length</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">amp</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">twisted_multifibre</span> <span class="o">=</span> <span class="n">create_twisted_multifibre</span><span class="p">(</span>
+    <span class="n">radius</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">fibre_length</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">amp</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">freq</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">n_fibres</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">pyvista</span> <span class="k">as</span> <span class="nn">pv</span>
+<span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">lines</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">measure_TPB</span><span class="p">(</span><span class="n">twisted_multifibre</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="mf">50e-9</span><span class="p">)</span>
+<span class="n">TPB_mesh_twist</span> <span class="o">=</span> <span class="n">pv</span><span class="o">.</span><span class="n">PolyData</span><span class="p">(</span><span class="n">create_vertices_in_uniform_grid</span><span class="p">(</span><span class="n">twisted_multifibre</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">lines</span><span class="o">=</span><span class="n">lines</span><span class="p">)</span>
+
+<span class="n">bended_fibre</span> <span class="o">=</span> <span class="n">bend_fibre</span><span class="p">(</span>
+    <span class="n">twisted_multifibre</span><span class="p">,</span>
+    <span class="n">bending_factor</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="p">)</span>
+
+<span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">lines</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">measure_TPB</span><span class="p">(</span><span class="n">bended_fibre</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="mf">50e-9</span><span class="p">)</span>
+<span class="n">TPB_mesh_bend</span> <span class="o">=</span> <span class="n">pv</span><span class="o">.</span><span class="n">PolyData</span><span class="p">(</span><span class="n">create_vertices_in_uniform_grid</span><span class="p">(</span><span class="n">bended_fibre</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">lines</span><span class="o">=</span><span class="n">lines</span><span class="p">)</span>
+
+<span class="n">bed</span> <span class="o">=</span> <span class="n">create_fibrous_bed</span><span class="p">(</span>
+    <span class="n">voxels</span> <span class="o">=</span> <span class="p">[</span><span class="mi">150</span><span class="p">,</span><span class="mi">80</span><span class="p">,</span><span class="mi">80</span><span class="p">],</span>
+    <span class="n">radius</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">fibre_length</span> <span class="o">=</span> <span class="mi">80</span><span class="p">,</span>
+    <span class="n">target_porosity</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span>
+    <span class="n">rotation_max</span> <span class="o">=</span> <span class="p">(</span><span class="mi">90</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="n">vm</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">fibre</span><span class="p">],</span>
+    <span class="p">[(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">)],</span>
+    <span class="n">notebook</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<span class="n">vm</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">twisted_fibre</span><span class="p">],</span>
+    <span class="p">[(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">)],</span>
+    <span class="n">notebook</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<span class="n">vm</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">twisted_multifibre</span><span class="p">],</span>
+    <span class="p">[(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)],</span>
+    <span class="n">TPB_mesh</span><span class="o">=</span><span class="p">[</span><span class="n">TPB_mesh_twist</span><span class="p">],</span>
+    <span class="n">notebook</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<span class="n">vm</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">bended_fibre</span><span class="p">],</span>
+    <span class="p">[(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)],</span>
+    <span class="n">TPB_mesh</span><span class="o">=</span><span class="p">[</span><span class="n">TPB_mesh_bend</span><span class="p">],</span>
+    <span class="n">notebook</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">vm</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">bed</span><span class="p">],</span>
+    <span class="p">[(</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">)],</span>
+    <span class="n">notebook</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+C:\Users\x67637ha\Anaconda3\envs\SOFC\Lib\site-packages\pyvista\core\utilities\points.py:52: UserWarning: Points is not a float type. This can cause issues when transforming or applying filters. Casting to ``np.float32``. Disable this by passing ``force_float=False``.
+  warnings.warn(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "a3c1f4671852451489261f71e90387a7", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "b1ff0550e6c14f988565ce05037c6713", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "087e1c942c2d42a099a22d9d5ce6e9e5", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "d8c821377d8549938ef6c8ef04310584", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "0d8f100f682a47dc8acde4a745a2d545", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;../..&quot;</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">modules.topology</span> <span class="kn">import</span> <span class="n">create_microstructure_lattice</span>
+<span class="kn">from</span> <span class="nn">modules.postprocess</span> <span class="kn">import</span> <span class="n">visualize_mesh</span> <span class="k">as</span> <span class="n">vm</span>
+
+<span class="n">lattice</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">create_microstructure_lattice</span><span class="p">(</span>
+    <span class="n">vol_frac</span><span class="o">=</span><span class="p">[</span><span class="mf">0.3</span><span class="p">,</span><span class="mf">0.35</span><span class="p">,</span><span class="mf">0.35</span><span class="p">],</span>
+    <span class="n">dx</span><span class="o">=</span><span class="mf">50e-9</span><span class="p">,</span>
+    <span class="n">voxels</span><span class="o">=</span><span class="p">[</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">,</span><span class="mi">50</span><span class="p">],</span>
+    <span class="n">d_particle</span> <span class="o">=</span><span class="mf">500e-9</span><span class="p">,</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">smallest_lattice</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">vm</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">lattice</span><span class="p">],</span>
+    <span class="p">[(</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">)],</span>
+    <span class="n">notebook</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "57a8ffb6bee74fc9b2fcf08663af5b0b", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<script type="application/vnd.jupyter.widget-state+json">
+{"state": {"087e1c942c2d42a099a22d9d5ce6e9e5": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HTMLView", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_fea747d31d7242b1be3937b7046cff5c", "placeholder": "\u200b", "style": "IPY_MODEL_a3d691773fb14276a5b4076abcc4ee23", "tabbable": null, "tooltip": null, "value": "<iframe src=\"http://localhost:51158/index.html?ui=P_0x20f107b5940_4&reconnect=auto\" class=\"pyvista\" style=\"width: 99%; height: 600px; border: 1px solid rgb(221,221,221);\"></iframe>"}}, "0d8f100f682a47dc8acde4a745a2d545": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HTMLView", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_7a7aa1ea010949b189660f02eb9e5ab6", "placeholder": "\u200b", "style": "IPY_MODEL_45253b2be5c847eb8c15e439cb63e82c", "tabbable": null, "tooltip": null, "value": "<iframe src=\"http://localhost:51158/index.html?ui=P_0x20f39f3d100_6&reconnect=auto\" class=\"pyvista\" style=\"width: 99%; height: 600px; border: 1px solid rgb(221,221,221);\"></iframe>"}}, "14961cbc7eb942e2980e6134012ff731": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HTMLView", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_e7b8721c15fc4390937510ca7883b585", "placeholder": "\u200b", "style": "IPY_MODEL_eafae0450f6e45cf8f5061c3f0b9b7b0", "tabbable": null, "tooltip": null, "value": "<iframe src=\"http://localhost:51158/index.html?ui=P_0x20f77ba2ff0_0&reconnect=auto\" class=\"pyvista\" style=\"width: 99%; height: 600px; border: 1px solid rgb(221,221,221);\"></iframe>"}}, "1c22a0c012fd4707b21406999480c27b": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "background": null, "description_width": "", "font_size": null, "text_color": null}}, "45253b2be5c847eb8c15e439cb63e82c": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "background": null, "description_width": "", "font_size": null, "text_color": null}}, "4cc1b0812c8f42279ff49ef7506d548f": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "57a8ffb6bee74fc9b2fcf08663af5b0b": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HTMLView", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_74f3e2f201d143549b81dcd5325dc2ad", "placeholder": "\u200b", "style": "IPY_MODEL_efa3aeb0b5a347a2bea588a626cc967e", "tabbable": null, "tooltip": null, "value": "<iframe src=\"http://localhost:51158/index.html?ui=P_0x20f4514fbc0_7&reconnect=auto\" class=\"pyvista\" style=\"width: 99%; height: 600px; border: 1px solid rgb(221,221,221);\"></iframe>"}}, "5e91c2644d8c430fbaee109cc1b8d595": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "60c3851295e54bf7b1fba581b684d1ba": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "74f3e2f201d143549b81dcd5325dc2ad": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "78c2cc05d1df40f3a69317b6f16f9fe5": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "background": null, "description_width": "", "font_size": null, "text_color": null}}, "7a7aa1ea010949b189660f02eb9e5ab6": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "91819e69f0eb4a529413a59db8aeef17": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "a3c1f4671852451489261f71e90387a7": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HTMLView", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_5e91c2644d8c430fbaee109cc1b8d595", "placeholder": "\u200b", "style": "IPY_MODEL_f3b8cdcf71454eac98882e4f65f2ac95", "tabbable": null, "tooltip": null, "value": "<iframe src=\"http://localhost:51158/index.html?ui=P_0x20f107aedb0_2&reconnect=auto\" class=\"pyvista\" style=\"width: 99%; height: 600px; border: 1px solid rgb(221,221,221);\"></iframe>"}}, "a3d691773fb14276a5b4076abcc4ee23": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "background": null, "description_width": "", "font_size": null, "text_color": null}}, "b1ff0550e6c14f988565ce05037c6713": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HTMLView", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_91819e69f0eb4a529413a59db8aeef17", "placeholder": "\u200b", "style": "IPY_MODEL_1c22a0c012fd4707b21406999480c27b", "tabbable": null, "tooltip": null, "value": "<iframe src=\"http://localhost:51158/index.html?ui=P_0x20f107ac5f0_3&reconnect=auto\" class=\"pyvista\" style=\"width: 99%; height: 600px; border: 1px solid rgb(221,221,221);\"></iframe>"}}, "d624a998f2c14309bf7b68a19bc54161": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HTMLView", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_4cc1b0812c8f42279ff49ef7506d548f", "placeholder": "\u200b", "style": "IPY_MODEL_fd93969726ec40b0af4b6f2f64496f99", "tabbable": null, "tooltip": null, "value": "<iframe src=\"http://localhost:51158/index.html?ui=P_0x20f107afe60_1&reconnect=auto\" class=\"pyvista\" style=\"width: 99%; height: 600px; border: 1px solid rgb(221,221,221);\"></iframe>"}}, "d8c821377d8549938ef6c8ef04310584": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLModel", "state": {"_dom_classes": [], "_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLModel", "_view_count": null, "_view_module": "@jupyter-widgets/controls", "_view_module_version": "2.0.0", "_view_name": "HTMLView", "description": "", "description_allow_html": false, "layout": "IPY_MODEL_60c3851295e54bf7b1fba581b684d1ba", "placeholder": "\u200b", "style": "IPY_MODEL_78c2cc05d1df40f3a69317b6f16f9fe5", "tabbable": null, "tooltip": null, "value": "<iframe src=\"http://localhost:51158/index.html?ui=P_0x20f107b6ff0_5&reconnect=auto\" class=\"pyvista\" style=\"width: 99%; height: 600px; border: 1px solid rgb(221,221,221);\"></iframe>"}}, "e7b8721c15fc4390937510ca7883b585": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "eafae0450f6e45cf8f5061c3f0b9b7b0": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "background": null, "description_width": "", "font_size": null, "text_color": null}}, "efa3aeb0b5a347a2bea588a626cc967e": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "background": null, "description_width": "", "font_size": null, "text_color": null}}, "f3b8cdcf71454eac98882e4f65f2ac95": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "background": null, "description_width": "", "font_size": null, "text_color": null}}, "fd93969726ec40b0af4b6f2f64496f99": {"model_module": "@jupyter-widgets/controls", "model_module_version": "2.0.0", "model_name": "HTMLStyleModel", "state": {"_model_module": "@jupyter-widgets/controls", "_model_module_version": "2.0.0", "_model_name": "HTMLStyleModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "StyleView", "background": null, "description_width": "", "font_size": null, "text_color": null}}, "fea747d31d7242b1be3937b7046cff5c": {"model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "model_name": "LayoutModel", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}}, "version_major": 2, "version_minor": 0}
+</script>
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="../_sources/jupyter_execute/Synthetic microstructures.ipynb.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
